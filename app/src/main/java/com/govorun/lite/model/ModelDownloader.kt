@@ -6,9 +6,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.net.HttpURLConnection
 import java.net.URL
+import java.security.MessageDigest
 import kotlin.coroutines.coroutineContext
 
 /**
@@ -104,8 +106,32 @@ object ModelDownloader {
             if (target.length() != spec.sizeBytes) {
                 throw IllegalStateException("Size mismatch: got ${target.length()} expected ${spec.sizeBytes}")
             }
+            // Integrity check against the shipped SHA-256. Guards against a
+            // corrupted download and against a GitHub Release asset being swapped
+            // — model weights are shipped from our own Release, but verifying the
+            // hash is still the only protection a client has if the release ever
+            // gets compromised.
+            spec.sha256?.let { expected ->
+                val actual = sha256(target)
+                if (!actual.equals(expected, ignoreCase = true)) {
+                    throw IllegalStateException("SHA-256 mismatch for ${spec.name}: expected $expected, got $actual")
+                }
+            }
         } finally {
             conn.disconnect()
         }
+    }
+
+    private fun sha256(file: File): String {
+        val digest = MessageDigest.getInstance("SHA-256")
+        FileInputStream(file).use { fis ->
+            val buf = ByteArray(BUFFER_SIZE)
+            while (true) {
+                val read = fis.read(buf)
+                if (read <= 0) break
+                digest.update(buf, 0, read)
+            }
+        }
+        return digest.digest().joinToString("") { "%02x".format(it) }
     }
 }
