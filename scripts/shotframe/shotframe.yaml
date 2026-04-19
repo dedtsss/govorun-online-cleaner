@@ -1,0 +1,24 @@
+input_dir: ../../rustore-screenshots
+output_dir: ../../rustore-screenshots/processed
+
+screenshots:
+  - file: 01-onboarding-01.png
+    caption:
+      - Всё остаётся
+      - на вашем телефоне
+  - file: 06-check-result.png
+    caption:
+      - Понимает русский
+      - с первого слова
+  - file: 07-main.png
+    caption:
+      - Говорите в разы быстрее,
+      - чем печатаете
+  - file: 08-bubble.png
+    caption:
+      - Диктуйте заметки
+      - прямо в приложении
+  - file: 11-bubble-result.png
+    caption:
+      - Отправляйте сообщения
+      - быстрее всех
