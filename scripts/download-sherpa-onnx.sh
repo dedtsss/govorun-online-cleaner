@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+# Downloads the sherpa-onnx AAR into app/libs/.
+# The AAR (47 MB, gitignored) ships the native ASR runtime used for GigaAM v3.
+set -euo pipefail
+
+VERSION="1.12.34"
+URL="https://github.com/k2-fsa/sherpa-onnx/releases/download/v${VERSION}/sherpa-onnx-${VERSION}.aar"
+DEST_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/app/libs"
+DEST="${DEST_DIR}/sherpa-onnx.aar"
+
+mkdir -p "${DEST_DIR}"
+
+if [[ -f "${DEST}" ]]; then
+  echo "Already present: ${DEST}"
+  exit 0
+fi
+
+echo "Downloading sherpa-onnx ${VERSION}…"
+curl -fL --progress-bar -o "${DEST}" "${URL}"
+echo "Saved to ${DEST}"

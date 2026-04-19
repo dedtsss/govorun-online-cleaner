@@ -1,0 +1,26 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="120dp"
+    android:height="120dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24"
+    android:tint="?attr/colorPrimary">
+    <!-- Bird silhouette, outline only. Monochrome; the parent ImageView
+         controls tint. Same geometry as ic_bird_24 but sized up with a
+         slightly bolder stroke so it reads at hero sizes. -->
+    <path
+        android:strokeColor="@android:color/white"
+        android:strokeWidth="1.4"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:fillColor="@android:color/transparent"
+        android:pathData="M21.5,10.5 L17.5,9 C14.5,5.5 9,5.5 6,9.5 L3,8.5 L4,12.5 C5.5,15.5 9,17.5 13,17.5 C16,17.5 18,15.5 18,13 L21.5,11.5 Z" />
+    <path
+        android:strokeColor="@android:color/white"
+        android:strokeWidth="1.1"
+        android:strokeLineCap="round"
+        android:fillColor="@android:color/transparent"
+        android:pathData="M7.5,11.5 C9.5,13.5 12,14.5 15,14" />
+    <path
+        android:fillColor="@android:color/white"
+        android:pathData="M15.2,9 m-0.7,0 a0.7,0.7 0 1,0 1.4,0 a0.7,0.7 0 1,0 -1.4,0 Z" />
+</vector>

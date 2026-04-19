@@ -1,0 +1,25 @@
+# Gradle
+.gradle/
+build/
+local.properties
+
+# Android Studio / IntelliJ
+.idea/
+*.iml
+.DS_Store
+
+# APK / build outputs
+*.apk
+*.aab
+captures/
+
+# Keystore (never commit)
+*.jks
+*.keystore
+keystore.properties
+
+# Large native deps downloaded by script
+app/libs/*.aar
+
+# Logs
+*.log
