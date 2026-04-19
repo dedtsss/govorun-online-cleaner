@@ -1,15 +1,15 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 640" width="1280" height="640" role="img" aria-label="Говорун Lite — голосовой ввод на русском без интернета">
   <defs>
-    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#F6F0FF"/>
-      <stop offset="100%" stop-color="#EDE7F6"/>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#F5F5F7"/>
+      <stop offset="100%" stop-color="#E8E8EB"/>
     </linearGradient>
   </defs>
 
   <rect width="1280" height="640" rx="32" fill="url(#bg)"/>
 
   <!-- Soft tonal container behind the logo -->
-  <circle cx="340" cy="320" r="215" fill="#E8DEF8" opacity="0.9"/>
+  <circle cx="340" cy="320" r="215" fill="#FFFFFF" opacity="0.85"/>
 
   <!-- Bird mark (same vector as the launcher icon, 24x24 viewport) -->
   <g transform="translate(144 136) scale(16)" stroke="#1D192B" fill="none" stroke-linecap="round" stroke-linejoin="round">
@@ -18,25 +18,25 @@
     <circle cx="15.2" cy="9" r="0.7" fill="#1D192B" stroke="none"/>
   </g>
 
-  <g font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif">
+  <g font-family="'Inter Display', Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif">
     <!-- Title -->
-    <text x="600" y="310" font-size="84" font-weight="700" letter-spacing="-1.2" fill="#1D192B">Говорун Lite</text>
+    <text x="600" y="310" font-size="92" font-weight="800" letter-spacing="-2.5" fill="#14141A">Говорун Lite</text>
 
     <!-- Subtitle -->
-    <text x="602" y="362" font-size="28" fill="#49454F">Голосовой ввод на русском без интернета</text>
+    <text x="602" y="362" font-size="28" fill="#4A4A52">Голосовой ввод на русском без интернета</text>
 
     <!-- Pill badges -->
-    <g transform="translate(600 400)" font-size="17" fill="#49454F">
+    <g transform="translate(600 400)" font-size="17" fill="#4A4A52">
       <g>
-        <rect width="152" height="40" rx="20" fill="none" stroke="#CAC4D0" stroke-width="1.5"/>
+        <rect width="152" height="40" rx="20" fill="none" stroke="#C8C8CE" stroke-width="1.5"/>
         <text x="76" y="26" text-anchor="middle">Android 13+</text>
       </g>
       <g transform="translate(168 0)">
-        <rect width="144" height="40" rx="20" fill="none" stroke="#CAC4D0" stroke-width="1.5"/>
+        <rect width="144" height="40" rx="20" fill="none" stroke="#C8C8CE" stroke-width="1.5"/>
         <text x="72" y="26" text-anchor="middle">arm64-v8a</text>
       </g>
       <g transform="translate(328 0)">
-        <rect width="100" height="40" rx="20" fill="none" stroke="#CAC4D0" stroke-width="1.5"/>
+        <rect width="100" height="40" rx="20" fill="none" stroke="#C8C8CE" stroke-width="1.5"/>
         <text x="50" y="26" text-anchor="middle">MIT</text>
       </g>
     </g>
