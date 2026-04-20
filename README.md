@@ -7,15 +7,17 @@
 Голосовой ввод на русском для Android. Работает прямо на телефоне — без
 интернета, без аккаунтов, без облака. Звук никуда не отправляется.
 
-Движок распознавания — [GigaAM v3](https://github.com/salute-developers/GigaAM)
-от Сбера (лицензия MIT) через [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx).
-Речевая активность ловится офлайновым [Silero VAD](https://github.com/snakers4/silero-vad).
+Под капотом:
+
+- **[GigaAM v3](https://github.com/salute-developers/GigaAM)** — модель распознавания речи от Сбера, лицензия MIT
+- **[sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx)** — нативный ONNX-рантайм
+- **[Silero VAD](https://github.com/snakers4/silero-vad)** — офлайновый детектор речевой активности
 
 ## Установка
 
 <p align="center">
   <a href="https://www.rustore.ru/catalog/app/com.govorun.lite">
-    <img src="docs/rustore-badge.svg" alt="Скачать в RuStore" width="320">
+    <img src="docs/rustore-badge.svg" alt="Скачать в RuStore" width="180">
   </a>
 </p>
 
