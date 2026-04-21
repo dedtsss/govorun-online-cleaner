@@ -11,10 +11,4 @@
         <item quantity="other">%1$s слова</item>
     </plurals>
 
-    <plurals name="main_stats_today">
-        <item quantity="one">Сегодня %1$s слово</item>
-        <item quantity="few">Сегодня %1$s слова</item>
-        <item quantity="many">Сегодня %1$s слов</item>
-        <item quantity="other">Сегодня %1$s слова</item>
-    </plurals>
 </resources>

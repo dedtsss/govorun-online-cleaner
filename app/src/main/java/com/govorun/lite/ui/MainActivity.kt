@@ -58,9 +58,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var statsRow: View
     private lateinit var statsWordsNumber: MaterialTextView
     private lateinit var statsMinutesNumber: MaterialTextView
-    private lateinit var statsToday: MaterialTextView
     private lateinit var statsEmpty: MaterialTextView
-    private lateinit var statsActionRow: View
     private lateinit var statsShareButton: MaterialButton
     private lateinit var promoCard: View
     private lateinit var toolbar: MaterialToolbar
@@ -135,9 +133,7 @@ class MainActivity : AppCompatActivity() {
         statsRow = findViewById(R.id.statsRow)
         statsWordsNumber = findViewById(R.id.statsWordsNumber)
         statsMinutesNumber = findViewById(R.id.statsMinutesNumber)
-        statsToday = findViewById(R.id.statsToday)
         statsEmpty = findViewById(R.id.statsEmpty)
-        statsActionRow = findViewById(R.id.statsActionRow)
         statsShareButton = findViewById(R.id.statsShareButton)
         statsShareButton.setOnClickListener { shareAppLink() }
 
@@ -182,33 +178,19 @@ class MainActivity : AppCompatActivity() {
         val words = StatsStore.getWords(this)
         val voiceSeconds = StatsStore.getSeconds(this)
         val voiceMinutes = voiceSeconds / 60L
-        val wordsToday = StatsStore.getWordsToday(this)
 
         if (words <= 0L) {
             statsRow.visibility = View.GONE
-            statsActionRow.visibility = View.GONE
+            statsShareButton.visibility = View.GONE
             statsEmpty.visibility = View.VISIBLE
             return
         }
         statsRow.visibility = View.VISIBLE
-        statsActionRow.visibility = View.VISIBLE
+        statsShareButton.visibility = View.VISIBLE
         statsEmpty.visibility = View.GONE
 
         statsWordsNumber.text = formatThousands(words)
         statsMinutesNumber.text = voiceMinutes.toString()
-
-        // «Сегодня» line only materialises after the user has dictated
-        // something today — empty days should not shout "Сегодня 0 слов".
-        if (wordsToday > 0L) {
-            statsToday.text = resources.getQuantityString(
-                R.plurals.main_stats_today,
-                wordsToday.toPluralSelector(),
-                formatThousands(wordsToday),
-            )
-            statsToday.visibility = View.VISIBLE
-        } else {
-            statsToday.visibility = View.GONE
-        }
     }
 
     // Russian plural rule branches on last-digit AND last-two-digits, both

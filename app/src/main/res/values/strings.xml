@@ -179,7 +179,8 @@
 
     <!-- Future plans screen / RuStore review CTA -->
     <string name="main_pro_title">Новые функции</string>
-    <string name="main_pro_intro">Говорун — наш небольшой проект, который мы делаем с душой. Если приложение вам по вкусу — впереди может появиться ещё много полезного:</string>
+    <string name="main_pro_intro">Говорун — наш небольшой проект, и мы делаем его с душой. Если приложение пригодилось — поддержите звёздочкой в RuStore: пара тёплых слов подскажет, куда двигаться дальше.</string>
+    <string name="main_pro_feat_heading">Что планируем дальше</string>
     <string name="main_pro_feat_bg_record_title">Запись голоса в фоне</string>
     <string name="main_pro_feat_bg_record_body">Диктофон, который продолжает запись даже с выключенным экраном и распознаёт всё целиком.</string>
     <string name="main_pro_feat_dict_title">Словарь автозамен</string>
@@ -187,7 +188,6 @@
     <string name="main_pro_feat_theme_title">Темы и вид Говоруна</string>
     <string name="main_pro_feat_theme_body">Разные стили, цвета и размеры Говоруна.</string>
     <string name="main_pro_feat_more">…и многое другое, что сделает голосовой ввод удобнее</string>
-    <string name="main_pro_review_intro">Если Говорун пришёлся по душе — поддержите нас звёздочкой в RuStore. Пара тёплых слов от вас подскажет, куда двигаться дальше и ради кого стараться.</string>
     <string name="main_pro_review_button">Оставить отзыв в RuStore</string>
     <string name="main_pro_review_url">https://apps.rustore.ru/app/com.govorun.lite</string>
 </resources>

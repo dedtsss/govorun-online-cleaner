@@ -31,12 +31,17 @@
         android:clipToPadding="false"
         app:layout_behavior="@string/appbar_scrolling_view_behavior">
 
+        <!-- Unified M3 layout: all cards on colorSurfaceContainerLow at 20dp
+             radius with 20dp inner padding. 12dp between cards. State and
+             accent are expressed through icon/number colour, not background
+             colour — so a page of three cards reads as one calm stack rather
+             than a clash of primary / secondary / outlined containers. -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
             android:paddingHorizontal="16dp"
-            android:paddingTop="16dp"
+            android:paddingTop="20dp"
             android:paddingBottom="24dp">
 
             <com.google.android.material.textview.MaterialTextView
@@ -44,7 +49,8 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="@string/main_ready"
-                android:textAppearance="?attr/textAppearanceHeadlineMedium" />
+                android:textAppearance="?attr/textAppearanceTitleLarge"
+                android:textColor="?attr/colorOnSurface" />
 
             <com.google.android.material.textview.MaterialTextView
                 android:id="@+id/mainSubline"
@@ -60,148 +66,135 @@
                 android:id="@+id/statsCard"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                app:cardBackgroundColor="?attr/colorPrimaryContainer"
+                app:cardBackgroundColor="?attr/colorSurfaceContainerLow"
                 app:cardCornerRadius="20dp"
                 app:cardElevation="0dp">
 
-                <LinearLayout
+                <FrameLayout
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:paddingStart="20dp"
-                    android:paddingEnd="20dp"
-                    android:paddingTop="20dp"
-                    android:paddingBottom="8dp">
+                    android:layout_height="wrap_content">
 
-                    <com.google.android.material.textview.MaterialTextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/main_stats_title"
-                        android:textAppearance="?attr/textAppearanceTitleMedium"
-                        android:textColor="?attr/colorOnPrimaryContainer" />
+                    <!-- Decorative Говорун mascot, bottom-right of card.
+                         Tinted colorPrimary at low alpha so it reads as a
+                         subtle brand accent rather than a second focal
+                         point competing with the numbers. -->
+                    <ImageView
+                        android:layout_width="104dp"
+                        android:layout_height="104dp"
+                        android:layout_gravity="end|bottom"
+                        android:alpha="0.14"
+                        android:importantForAccessibility="no"
+                        android:src="@drawable/logo_bird"
+                        app:tint="?attr/colorPrimary" />
 
                     <LinearLayout
-                        android:id="@+id/statsRow"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="20dp"
-                        android:orientation="horizontal">
+                        android:orientation="vertical"
+                        android:padding="20dp">
+
+                        <FrameLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content">
+
+                            <com.google.android.material.textview.MaterialTextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_gravity="start|center_vertical"
+                                android:paddingEnd="48dp"
+                                android:text="@string/main_stats_title"
+                                android:textAppearance="?attr/textAppearanceTitleMedium"
+                                android:textColor="?attr/colorOnSurface" />
+
+                            <com.google.android.material.button.MaterialButton
+                                android:id="@+id/statsShareButton"
+                                style="@style/Widget.Material3.Button.IconButton"
+                                android:layout_width="40dp"
+                                android:layout_height="40dp"
+                                android:layout_gravity="end|center_vertical"
+                                android:contentDescription="@string/main_share_button"
+                                app:icon="@drawable/ic_share_24"
+                                app:iconSize="20dp"
+                                app:iconTint="?attr/colorOnSurfaceVariant" />
+                        </FrameLayout>
 
                         <LinearLayout
-                            android:layout_width="0dp"
+                            android:id="@+id/statsRow"
+                            android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:gravity="center_horizontal"
-                            android:orientation="vertical">
+                            android:layout_marginTop="16dp"
+                            android:orientation="horizontal">
 
-                            <com.google.android.material.textview.MaterialTextView
-                                android:id="@+id/statsWordsNumber"
-                                android:layout_width="wrap_content"
+                            <LinearLayout
+                                android:layout_width="0dp"
                                 android:layout_height="wrap_content"
-                                android:maxLines="1"
-                                android:textAppearance="?attr/textAppearanceDisplaySmall"
-                                android:textColor="?attr/colorOnPrimaryContainer"
-                                tools:text="1 234" />
+                                android:layout_weight="1"
+                                android:orientation="vertical">
 
-                            <com.google.android.material.textview.MaterialTextView
-                                android:layout_width="wrap_content"
+                                <com.google.android.material.textview.MaterialTextView
+                                    android:id="@+id/statsWordsNumber"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:maxLines="1"
+                                    android:textAppearance="?attr/textAppearanceHeadlineSmall"
+                                    android:textColor="?attr/colorPrimary"
+                                    tools:text="1 234" />
+
+                                <com.google.android.material.textview.MaterialTextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:layout_marginTop="2dp"
+                                    android:text="@string/main_stats_words_label"
+                                    android:textAppearance="?attr/textAppearanceLabelMedium"
+                                    android:textColor="?attr/colorOnSurfaceVariant" />
+                            </LinearLayout>
+
+                            <LinearLayout
+                                android:layout_width="0dp"
                                 android:layout_height="wrap_content"
-                                android:layout_marginTop="2dp"
-                                android:text="@string/main_stats_words_label"
-                                android:textAppearance="?attr/textAppearanceBodySmall"
-                                android:textColor="?attr/colorOnPrimaryContainer" />
+                                android:layout_weight="1"
+                                android:orientation="vertical">
+
+                                <com.google.android.material.textview.MaterialTextView
+                                    android:id="@+id/statsMinutesNumber"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:maxLines="1"
+                                    android:textAppearance="?attr/textAppearanceHeadlineSmall"
+                                    android:textColor="?attr/colorPrimary"
+                                    tools:text="47" />
+
+                                <com.google.android.material.textview.MaterialTextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:layout_marginTop="2dp"
+                                    android:text="@string/main_stats_minutes_label"
+                                    android:textAppearance="?attr/textAppearanceLabelMedium"
+                                    android:textColor="?attr/colorOnSurfaceVariant" />
+                            </LinearLayout>
                         </LinearLayout>
-
-                        <View
-                            android:layout_width="1dp"
-                            android:layout_height="match_parent"
-                            android:layout_marginVertical="4dp"
-                            android:alpha="0.4"
-                            android:background="?attr/colorOutlineVariant" />
-
-                        <LinearLayout
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:gravity="center_horizontal"
-                            android:orientation="vertical">
-
-                            <com.google.android.material.textview.MaterialTextView
-                                android:id="@+id/statsMinutesNumber"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:maxLines="1"
-                                android:textAppearance="?attr/textAppearanceDisplaySmall"
-                                android:textColor="?attr/colorOnPrimaryContainer"
-                                tools:text="47" />
-
-                            <com.google.android.material.textview.MaterialTextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:layout_marginTop="2dp"
-                                android:text="@string/main_stats_minutes_label"
-                                android:textAppearance="?attr/textAppearanceBodySmall"
-                                android:textColor="?attr/colorOnPrimaryContainer" />
-                        </LinearLayout>
-                    </LinearLayout>
-
-                    <!-- Bottom action row: «Сегодня N слов» on the left,
-                         share button tucked into the far-right corner. M3
-                         card-actions convention — affordance sits at the
-                         natural "done reading, do something" spot, not in
-                         the title bar. -->
-                    <FrameLayout
-                        android:id="@+id/statsActionRow"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="16dp">
 
                         <com.google.android.material.textview.MaterialTextView
-                            android:id="@+id/statsToday"
-                            android:layout_width="wrap_content"
+                            android:id="@+id/statsEmpty"
+                            android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:layout_gravity="start|center_vertical"
-                            android:alpha="0.85"
-                            android:paddingEnd="48dp"
-                            android:textAppearance="?attr/textAppearanceLabelLarge"
-                            android:textColor="?attr/colorOnPrimaryContainer"
-                            android:visibility="gone"
-                            tools:text="Сегодня 342 слова"
-                            tools:visibility="visible" />
-
-                        <com.google.android.material.button.MaterialButton
-                            android:id="@+id/statsShareButton"
-                            style="@style/Widget.Material3.Button.IconButton"
-                            android:layout_width="40dp"
-                            android:layout_height="40dp"
-                            android:layout_gravity="end|center_vertical"
-                            android:contentDescription="@string/main_share_button"
-                            app:icon="@drawable/ic_share_24"
-                            app:iconSize="18dp"
-                            app:iconTint="?attr/colorOnPrimaryContainer" />
-                    </FrameLayout>
-
-                    <com.google.android.material.textview.MaterialTextView
-                        android:id="@+id/statsEmpty"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="12dp"
-                        android:layout_marginBottom="12dp"
-                        android:text="@string/main_stats_empty"
-                        android:textAppearance="?attr/textAppearanceBodyMedium"
-                        android:textColor="?attr/colorOnPrimaryContainer"
-                        android:visibility="gone" />
-                </LinearLayout>
+                            android:layout_marginTop="12dp"
+                            android:text="@string/main_stats_empty"
+                            android:textAppearance="?attr/textAppearanceBodyMedium"
+                            android:textColor="?attr/colorOnSurfaceVariant"
+                            android:visibility="gone" />
+                    </LinearLayout>
+                </FrameLayout>
             </com.google.android.material.card.MaterialCardView>
 
             <com.google.android.material.card.MaterialCardView
                 android:id="@+id/cardServiceMissing"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="16dp"
+                android:layout_marginTop="12dp"
                 android:visibility="gone"
-                app:cardBackgroundColor="?attr/colorSecondaryContainer"
-                app:cardCornerRadius="16dp"
+                app:cardBackgroundColor="?attr/colorSurfaceContainerLow"
+                app:cardCornerRadius="20dp"
                 app:cardElevation="0dp">
 
                 <LinearLayout
@@ -229,7 +222,7 @@
                             android:layout_marginStart="12dp"
                             android:text="@string/main_card_service_title"
                             android:textAppearance="?attr/textAppearanceTitleMedium"
-                            android:textColor="?attr/colorOnSecondaryContainer" />
+                            android:textColor="?attr/colorOnSurface" />
                     </LinearLayout>
 
                     <com.google.android.material.textview.MaterialTextView
@@ -238,7 +231,7 @@
                         android:layout_marginTop="8dp"
                         android:text="@string/main_card_service_body"
                         android:textAppearance="?attr/textAppearanceBodyMedium"
-                        android:textColor="?attr/colorOnSecondaryContainer" />
+                        android:textColor="?attr/colorOnSurfaceVariant" />
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/cardServiceButton"
@@ -254,10 +247,10 @@
                 android:id="@+id/shortcutCard"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="16dp"
+                android:layout_marginTop="12dp"
                 android:visibility="gone"
-                app:cardBackgroundColor="?attr/colorSecondaryContainer"
-                app:cardCornerRadius="16dp"
+                app:cardBackgroundColor="?attr/colorSurfaceContainerLow"
+                app:cardCornerRadius="20dp"
                 app:cardElevation="0dp">
 
                 <LinearLayout
@@ -285,7 +278,7 @@
                             android:layout_marginStart="12dp"
                             android:text="@string/main_shortcut_card_title"
                             android:textAppearance="?attr/textAppearanceTitleMedium"
-                            android:textColor="?attr/colorOnSecondaryContainer" />
+                            android:textColor="?attr/colorOnSurface" />
                     </LinearLayout>
 
                     <com.google.android.material.textview.MaterialTextView
@@ -294,7 +287,7 @@
                         android:layout_marginTop="8dp"
                         android:text="@string/main_shortcut_card_body"
                         android:textAppearance="?attr/textAppearanceBodyMedium"
-                        android:textColor="?attr/colorOnSecondaryContainer" />
+                        android:textColor="?attr/colorOnSurfaceVariant" />
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/shortcutCardButton"
@@ -310,10 +303,10 @@
                 android:id="@+id/cardMicMissing"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="16dp"
+                android:layout_marginTop="12dp"
                 android:visibility="gone"
-                app:cardBackgroundColor="?attr/colorSecondaryContainer"
-                app:cardCornerRadius="16dp"
+                app:cardBackgroundColor="?attr/colorSurfaceContainerLow"
+                app:cardCornerRadius="20dp"
                 app:cardElevation="0dp">
 
                 <LinearLayout
@@ -341,7 +334,7 @@
                             android:layout_marginStart="12dp"
                             android:text="@string/main_card_mic_title"
                             android:textAppearance="?attr/textAppearanceTitleMedium"
-                            android:textColor="?attr/colorOnSecondaryContainer" />
+                            android:textColor="?attr/colorOnSurface" />
                     </LinearLayout>
 
                     <com.google.android.material.textview.MaterialTextView
@@ -350,7 +343,7 @@
                         android:layout_marginTop="8dp"
                         android:text="@string/main_card_mic_body"
                         android:textAppearance="?attr/textAppearanceBodyMedium"
-                        android:textColor="?attr/colorOnSecondaryContainer" />
+                        android:textColor="?attr/colorOnSurfaceVariant" />
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/cardMicButton"
@@ -366,10 +359,10 @@
                 android:id="@+id/cardBatteryMissing"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="16dp"
+                android:layout_marginTop="12dp"
                 android:visibility="gone"
-                app:cardBackgroundColor="?attr/colorSecondaryContainer"
-                app:cardCornerRadius="16dp"
+                app:cardBackgroundColor="?attr/colorSurfaceContainerLow"
+                app:cardCornerRadius="20dp"
                 app:cardElevation="0dp">
 
                 <LinearLayout
@@ -397,7 +390,7 @@
                             android:layout_marginStart="12dp"
                             android:text="@string/main_card_battery_title"
                             android:textAppearance="?attr/textAppearanceTitleMedium"
-                            android:textColor="?attr/colorOnSecondaryContainer" />
+                            android:textColor="?attr/colorOnSurface" />
                     </LinearLayout>
 
                     <com.google.android.material.textview.MaterialTextView
@@ -406,7 +399,7 @@
                         android:layout_marginTop="8dp"
                         android:text="@string/main_card_battery_body"
                         android:textAppearance="?attr/textAppearanceBodyMedium"
-                        android:textColor="?attr/colorOnSecondaryContainer" />
+                        android:textColor="?attr/colorOnSurfaceVariant" />
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/cardBatteryButton"
@@ -420,16 +413,15 @@
 
             <com.google.android.material.card.MaterialCardView
                 android:id="@+id/promoCard"
-                style="@style/Widget.Material3.CardView.Outlined"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="24dp"
+                android:layout_marginTop="12dp"
                 android:clickable="true"
                 android:focusable="true"
                 android:visibility="gone"
+                app:cardBackgroundColor="?attr/colorSurfaceContainerLow"
                 app:cardCornerRadius="20dp"
-                app:strokeColor="?attr/colorOutlineVariant"
-                app:strokeWidth="1dp">
+                app:cardElevation="0dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -439,8 +431,8 @@
                     android:padding="20dp">
 
                     <ImageView
-                        android:layout_width="44dp"
-                        android:layout_height="44dp"
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
                         android:importantForAccessibility="no"
                         android:src="@drawable/ic_star_24"
                         app:tint="@color/star_amber" />
@@ -448,7 +440,7 @@
                     <LinearLayout
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
-                        android:layout_marginStart="16dp"
+                        android:layout_marginStart="12dp"
                         android:layout_weight="1"
                         android:orientation="vertical">
 
