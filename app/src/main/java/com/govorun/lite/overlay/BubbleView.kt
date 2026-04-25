@@ -11,6 +11,7 @@ import android.view.View
 import android.view.animation.AccelerateDecelerateInterpolator
 import androidx.core.content.ContextCompat
 import com.govorun.lite.R
+import com.govorun.lite.util.Prefs
 
 /**
  * The floating "Говорун" — a round button with the bird mascot. Idle state
@@ -29,10 +30,15 @@ class BubbleView @JvmOverloads constructor(
 ) : View(context, attrs, defStyleAttr) {
 
     private val dp = resources.displayMetrics.density
-    private val bubbleSize = (56 * dp).toInt()
+    // Baseline 56dp disc with 32dp bird, both scaled by the user-chosen
+    // size factor from Prefs (default 1.0×). All animation maths derives
+    // from these — change the scale, everything (halo radius, recording
+    // pulse range, breathing amplitude) re-anchors automatically.
+    private var sizeScale: Float = Prefs.getBubbleSize(context)
+    private var bubbleSize = (56 * dp * sizeScale).toInt()
     // Bird silhouette reads a bit small at 24dp on a 56dp disc — bump it up
     // so the shape is recognisable at a glance.
-    private val iconSize = (32 * dp).toInt()
+    private var iconSize = (32 * dp * sizeScale).toInt()
 
     // Fallbacks if the host theme lacks M3 attrs (shouldn't happen — the
     // app theme is Theme.GovorunLite, Material3 — but keep the bubble
@@ -138,6 +144,25 @@ class BubbleView @JvmOverloads constructor(
         idleAlphaFraction = alpha.coerceIn(0f, 1f)
         basePaint.color = composeIdleFill()
         invalidate()
+    }
+
+    /**
+     * Re-read the user-chosen size scale from Prefs and re-derive bubbleSize
+     * and iconSize. Returns true if anything changed — caller can then decide
+     * whether to requestLayout(). LiteAccessibilityService rebuilds the whole
+     * bubble for size changes (cheaper than re-laying out a TYPE_ACCESSIBILITY_OVERLAY
+     * with already-running animators), so this method is here mainly for
+     * symmetry with setIdleAlpha and direct test usage.
+     */
+    fun applySizeScaleFromPrefs(): Boolean {
+        val newScale = Prefs.getBubbleSize(context)
+        if (newScale == sizeScale) return false
+        sizeScale = newScale
+        bubbleSize = (56 * dp * sizeScale).toInt()
+        iconSize = (32 * dp * sizeScale).toInt()
+        requestLayout()
+        invalidate()
+        return true
     }
 
     /**

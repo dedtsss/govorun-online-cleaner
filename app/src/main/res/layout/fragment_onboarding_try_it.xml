@@ -40,6 +40,21 @@
             android:textAppearance="?attr/textAppearanceTitleMedium"
             android:textColor="?attr/colorOnSurface" />
 
+        <!-- Sub-hint about which permission option to pick. Visibility is
+             flipped from TryItFragment based on hasMicPermission(): hidden
+             once the user has granted, since past that point they only see
+             this screen if they revisit. -->
+        <com.google.android.material.textview.MaterialTextView
+            android:id="@+id/tryGrantHint"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:gravity="center"
+            android:text="@string/onb_try_grant_hint"
+            android:textAppearance="?attr/textAppearanceBodySmall"
+            android:textColor="?attr/colorOnSurfaceVariant"
+            android:visibility="gone" />
+
         <com.google.android.material.card.MaterialCardView
             android:id="@+id/tryResultCard"
             android:layout_width="match_parent"

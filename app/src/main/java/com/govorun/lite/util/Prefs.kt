@@ -12,6 +12,13 @@ object Prefs {
     private const val FILE_NAME = "govorun_lite_prefs"
     private const val KEY_HAPTICS_ENABLED = "haptics_enabled"
     private const val KEY_BUBBLE_ALPHA = "bubble_alpha"
+    private const val KEY_BUBBLE_SIZE = "bubble_size"
+    private const val KEY_BUBBLE_Y = "bubble_y"
+    private const val KEY_BUBBLE_SIDE = "bubble_side"
+    private const val KEY_WHATS_NEW_HINT_DISMISSED = "whats_new_hint_dismissed"
+
+    const val BUBBLE_SIDE_RIGHT = "right"
+    const val BUBBLE_SIDE_LEFT = "left"
 
     // Clamp range for the bubble fill alpha. The floor (0.4) keeps the
     // bubble visible enough that the bird silhouette is still recognisable
@@ -26,9 +33,13 @@ object Prefs {
     // IllegalStateException on setValue.
     const val BUBBLE_ALPHA_DEFAULT = 0.85f
 
+    // Default ON since 1.0.4 — vibration is a "feature" we want users to
+    // experience out of the box. The MainActivity shows a one-time FYI card
+    // explaining this and offering a one-tap path to disable, so users
+    // who don't want it can flip it off without hunting through settings.
     fun isHapticsEnabled(context: Context): Boolean =
         context.getSharedPreferences(FILE_NAME, Context.MODE_PRIVATE)
-            .getBoolean(KEY_HAPTICS_ENABLED, false)
+            .getBoolean(KEY_HAPTICS_ENABLED, true)
 
     fun setHapticsEnabled(context: Context, enabled: Boolean) {
         context.getSharedPreferences(FILE_NAME, Context.MODE_PRIVATE)
@@ -48,6 +59,82 @@ object Prefs {
         context.getSharedPreferences(FILE_NAME, Context.MODE_PRIVATE)
             .edit()
             .putFloat(KEY_BUBBLE_ALPHA, snapped)
+            .apply()
+    }
+
+    // Bubble size scale relative to the baseline 56dp disc. 1.0 = stock,
+    // 0.7 = compact (≈39 dp), 1.4 = chunky (≈78 dp). Same slider-step
+    // discipline as alpha — Material Slider throws on off-step values.
+    const val BUBBLE_SIZE_MIN = 0.7f
+    const val BUBBLE_SIZE_MAX = 1.4f
+    const val BUBBLE_SIZE_STEP = 0.05f
+    const val BUBBLE_SIZE_DEFAULT = 1.0f
+
+    fun getBubbleSize(context: Context): Float {
+        val raw = context.getSharedPreferences(FILE_NAME, Context.MODE_PRIVATE)
+            .getFloat(KEY_BUBBLE_SIZE, BUBBLE_SIZE_DEFAULT)
+        return snapBubbleSize(raw)
+    }
+
+    fun setBubbleSize(context: Context, size: Float) {
+        val snapped = snapBubbleSize(size)
+        context.getSharedPreferences(FILE_NAME, Context.MODE_PRIVATE)
+            .edit()
+            .putFloat(KEY_BUBBLE_SIZE, snapped)
+            .apply()
+    }
+
+    private fun snapBubbleSize(value: Float): Float {
+        val clamped = value.coerceIn(BUBBLE_SIZE_MIN, BUBBLE_SIZE_MAX)
+        val steps = Math.round((clamped - BUBBLE_SIZE_MIN) / BUBBLE_SIZE_STEP)
+        val raw = BUBBLE_SIZE_MIN + steps * BUBBLE_SIZE_STEP
+        val rounded = Math.round(raw * 100f) / 100f
+        return rounded.coerceIn(BUBBLE_SIZE_MIN, BUBBLE_SIZE_MAX)
+    }
+
+    // WindowManager Y offset of the floating bubble — set after the user
+    // drags it. Default 0 = vertical centre (the LayoutParams gravity is
+    // CENTER_VERTICAL, so Y is interpreted as offset from centre). Stored
+    // so the bubble doesn't snap back to the middle every time the system
+    // restarts the accessibility service.
+    fun getBubbleY(context: Context): Int =
+        context.getSharedPreferences(FILE_NAME, Context.MODE_PRIVATE)
+            .getInt(KEY_BUBBLE_Y, 0)
+
+    fun setBubbleY(context: Context, y: Int) {
+        context.getSharedPreferences(FILE_NAME, Context.MODE_PRIVATE)
+            .edit()
+            .putInt(KEY_BUBBLE_Y, y)
+            .apply()
+    }
+
+    // Which screen edge the bubble snaps to. Default right (matches the
+    // accessibility-overlay convention on most Android voice/translate apps).
+    fun getBubbleSide(context: Context): String =
+        context.getSharedPreferences(FILE_NAME, Context.MODE_PRIVATE)
+            .getString(KEY_BUBBLE_SIDE, BUBBLE_SIDE_RIGHT) ?: BUBBLE_SIDE_RIGHT
+
+    fun setBubbleSide(context: Context, side: String) {
+        require(side == BUBBLE_SIDE_LEFT || side == BUBBLE_SIDE_RIGHT) {
+            "Invalid bubble side: $side"
+        }
+        context.getSharedPreferences(FILE_NAME, Context.MODE_PRIVATE)
+            .edit()
+            .putString(KEY_BUBBLE_SIDE, side)
+            .apply()
+    }
+
+    // One-time "What's new in 1.0.4" card on the main screen. Once
+    // dismissed, never shown again. New users (post-onboarding) and
+    // upgrading users (skip onboarding) both see it once.
+    fun isWhatsNewHintDismissed(context: Context): Boolean =
+        context.getSharedPreferences(FILE_NAME, Context.MODE_PRIVATE)
+            .getBoolean(KEY_WHATS_NEW_HINT_DISMISSED, false)
+
+    fun setWhatsNewHintDismissed(context: Context, dismissed: Boolean) {
+        context.getSharedPreferences(FILE_NAME, Context.MODE_PRIVATE)
+            .edit()
+            .putBoolean(KEY_WHATS_NEW_HINT_DISMISSED, dismissed)
             .apply()
     }
 

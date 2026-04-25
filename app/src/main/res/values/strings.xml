@@ -39,6 +39,12 @@
     <string name="onb_try_title">Попробуйте</string>
     <string name="onb_try_tap_to_start">Нажмите на птичку и попробуйте набрать текст голосом</string>
     <string name="onb_try_tap_to_grant">Нажмите на птичку и попробуйте набрать текст голосом</string>
+    <!-- Sub-hint shown only at the moment the system mic-permission dialog is
+         about to appear. Steers the user toward "При использовании
+         приложения" — picking "Только в этот раз" causes Android to silently
+         revoke the permission later and kill our process, leaving users
+         confused about why the bubble stopped working. -->
+    <string name="onb_try_grant_hint">Выберите «При использовании приложения»</string>
     <string name="onb_try_denied">Доступ к микрофону закрыт</string>
     <string name="onb_try_open_settings">Открыть настройки</string>
     <string name="onb_try_tap_to_stop">Говорите…</string>
@@ -71,19 +77,29 @@
     <string name="main_just_finished_sub">Откройте любое поле ввода — справа появится Говорун. Нажмите на него — и говорите.</string>
     <string name="main_hint">Можете отключить интернет — Говорун продолжит распознавать речь прямо на телефоне.</string>
     <string name="main_engine_credit">Движок — GigaAM v3 от Сбера, лицензия MIT.</string>
-    <string name="main_card_mic_title">Доступ к микрофону</string>
-    <string name="main_card_mic_body">Без микрофона Говорун не услышит, что вы говорите.</string>
-    <string name="main_card_mic_button">Открыть настройки приложения</string>
+    <string name="main_card_mic_title">Включите микрофон</string>
+    <string name="main_card_mic_body">Без микрофона Говорун не услышит, что вы говорите. Выберите Разрешения → Микрофон → Разрешить во время использования приложения.</string>
+    <string name="main_card_mic_button">Перейти в настройки</string>
     <string name="main_card_service_title">Включите Говоруна</string>
     <string name="main_card_service_body">Птичка не появится в других программах, пока вы не включили «Говорун — голосовой ввод» в специальных возможностях.</string>
     <string name="main_card_service_button">Разрешить специальные возможности</string>
     <string name="main_card_battery_title">Разрешите работу в фоне</string>
     <string name="main_card_battery_body">Иначе Андроид выгрузит Говоруна, и вам придётся включать его заново.</string>
     <string name="main_card_battery_button">Разрешить</string>
+
+    <!-- One-time "What's new in 1.0.4" card. Shown on the main screen
+         only after the user has cleared all setup problems (no missing-
+         mic / missing-service / missing-battery cards visible), so it
+         doesn't compete with action items. Disappears for good after the
+         user taps "Понятно". -->
+    <string name="main_card_whats_new_title">Что нового</string>
+    <string name="main_card_whats_new_line1">• Удерживайте птичку для записи, отпустите для отправки текста</string>
+    <string name="main_card_whats_new_line2">• Загляните в настройки — внешний вид птички теперь настраивается</string>
+    <string name="main_card_whats_new_dismiss">Понятно</string>
     <string name="main_needs_setup_sub">Несколько мелочей надо подкрутить — карточки ниже подскажут, что и где.</string>
     <string name="main_disable_service">Выключить Говоруна</string>
     <string name="main_disable_service_title">Выключить Говоруна?</string>
-    <string name="main_disable_service_hint">Птичка пропадёт из всех программ. Чтобы вернуть её, заново включите Говоруна в специальных возможностях Android.</string>
+    <string name="main_disable_service_hint">Говорун перестанет работать прямо сейчас. Птичка пропадёт во всех программах. Чтобы включить обратно, придётся снова открыть «Специальные возможности» Android и заново разрешить там Говоруну работать.</string>
 
     <!-- Settings: tapping the switch while Говорун is OFF opens this dialog
          so the user isn't left without a way back into the accessibility
@@ -119,9 +135,23 @@
     <string name="settings_transparency_body">Насколько бабл просвечивает фон приложения, поверх которого он появляется.</string>
     <string name="settings_haptics_title">Вибрация</string>
     <string name="settings_haptics_body">Короткая вибрация, когда запись начинается и заканчивается.</string>
-    <string name="settings_show_service_title">Показывать Говоруна</string>
-    <string name="settings_show_service_body">Птичка появляется над клавиатурой в любой программе.</string>
+    <!-- Show-service row labels: title shows current state, body explains
+         what tapping does. Toggle row tap leads to a confirmation dialog
+         (main_disable_service_*) — the switch itself is non-interactive
+         and only mirrors the system accessibility-enabled flag. -->
+    <string name="settings_service_on_title">Говорун включен</string>
+    <string name="settings_service_on_body">Нажмите, чтобы выключить.</string>
+    <string name="settings_service_off_title">Говорун выключен</string>
+    <string name="settings_service_off_body">Нажмите, чтобы включить. Птичка не появляется, пока Говоруну не разрешены специальные возможности Android.</string>
     <string name="settings_disable_body">Говорун перестанет появляться над клавиатурой.</string>
+
+    <string name="settings_bubble_size_title">Размер</string>
+    <string name="settings_bubble_size_body">Какого размера птичка появляется над клавиатурой.</string>
+    <string name="settings_bubble_side_title">Положение</string>
+    <string name="settings_bubble_side_body">С какой стороны экрана появляется птичка.</string>
+    <string name="settings_bubble_side_left">Слева</string>
+    <string name="settings_bubble_side_right">Справа</string>
+    <string name="settings_reset">Сбросить настройки</string>
 
     <!-- Main screen: promo card -->
     <string name="main_promo_title">Хотите больше возможностей?</string>

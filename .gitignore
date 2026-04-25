@@ -28,3 +28,11 @@ rustore-screenshots/
 
 # Shotframe lives in its own repo — github.com/amidexe/shotframe
 scripts/shotframe/
+
+# Local-only dev tooling (test-phone IP is personal, hooks are per-machine,
+# prepare-release.sh has the SMB host hardcoded)
+scripts/install-test.sh
+scripts/prepare-release.sh
+.claude/
+# Project-internal notes for AI assistants — kept local, not pushed.
+CLAUDE.md

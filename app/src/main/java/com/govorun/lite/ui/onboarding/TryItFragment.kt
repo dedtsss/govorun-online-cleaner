@@ -15,6 +15,7 @@ import android.text.SpannableString
 import android.text.style.ForegroundColorSpan
 import android.view.HapticFeedbackConstants
 import android.view.LayoutInflater
+import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ScrollView
@@ -29,6 +30,7 @@ import com.govorun.lite.overlay.BubbleView
 import com.govorun.lite.stats.StatsStore
 import com.govorun.lite.transcriber.OfflineTranscriber
 import com.govorun.lite.transcriber.VadRecorder
+import com.govorun.lite.util.Haptics
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -48,6 +50,7 @@ class TryItFragment : OnboardingStepFragment() {
 
     private lateinit var bubble: BubbleView
     private lateinit var hint: MaterialTextView
+    private lateinit var grantHint: MaterialTextView
     private lateinit var resultScroll: ScrollView
     private lateinit var resultText: MaterialTextView
     private lateinit var doneLabel: MaterialTextView
@@ -69,6 +72,13 @@ class TryItFragment : OnboardingStepFragment() {
 
     private var recorder: VadRecorder? = null
     @Volatile private var isRecording = false
+
+    companion object {
+        // Same threshold as LiteAccessibilityService — tap is anything
+        // shorter, hold is anything longer (provided the finger doesn't
+        // move past the touch slop in the meantime).
+        private const val HOLD_DELAY_MS = 250L
+    }
     private var accumulated = StringBuilder()
     private var recordStartMs: Long = 0L
     // Resets every time the view is (re)created, i.e. every fresh visit to
@@ -98,6 +108,7 @@ class TryItFragment : OnboardingStepFragment() {
         super.onViewCreated(view, savedInstanceState)
         bubble = view.findViewById(R.id.tryBubble)
         hint = view.findViewById(R.id.tryHint)
+        grantHint = view.findViewById(R.id.tryGrantHint)
         resultScroll = view.findViewById(R.id.tryResultScroll)
         resultText = view.findViewById(R.id.tryResult)
         doneLabel = view.findViewById(R.id.tryDoneLabel)
@@ -113,7 +124,89 @@ class TryItFragment : OnboardingStepFragment() {
 
         setStepComplete(hasMicPermission())
 
-        bubble.setOnClickListener { onMicTapped() }
+        // Touch listener mirroring LiteAccessibilityService: tap-to-toggle
+         // OR hold-to-talk OR horizontal-swipe-passthrough. Demo bubble has
+         // no drag-to-position (it's anchored to the layout), so we don't
+         // touch the bubble's location — movement just blocks tap activation.
+        bubble.setOnTouchListener(object : View.OnTouchListener {
+            private val touchSlopPx = 10f * resources.displayMetrics.density
+            private val holdMovementSlopPx = 5f * resources.displayMetrics.density
+            private val holdHandler = Handler(Looper.getMainLooper())
+            private var initialTouchX = 0f
+            private var initialTouchY = 0f
+            private var lastTouchX = 0f
+            private var lastTouchY = 0f
+            private var moved = false
+            private var holdStarted = false
+            private val holdRunnable = Runnable {
+                if (moved || holdStarted || !bubble.isEnabled || !hasMicPermission()) return@Runnable
+                // Tighter check than the touch-slop drag threshold —
+                // catches slow swipes that haven't yet tripped `moved` but
+                // are clearly in motion. Without this, slow gestures
+                // briefly start recording before being cancelled.
+                val movedX = Math.abs(lastTouchX - initialTouchX)
+                val movedY = Math.abs(lastTouchY - initialTouchY)
+                if (movedX > holdMovementSlopPx || movedY > holdMovementSlopPx) return@Runnable
+                holdStarted = true
+                // Hold-to-talk: raw PCM mode so the whole utterance reaches
+                // GigaAM as one block instead of being split on pauses.
+                startRecording(useVad = false)
+            }
+
+            @SuppressLint("ClickableViewAccessibility")
+            override fun onTouch(v: View, event: MotionEvent): Boolean {
+                if (!bubble.isEnabled) return false
+                when (event.action) {
+                    MotionEvent.ACTION_DOWN -> {
+                        initialTouchX = event.rawX
+                        initialTouchY = event.rawY
+                        lastTouchX = event.rawX
+                        lastTouchY = event.rawY
+                        moved = false
+                        holdStarted = false
+                        holdHandler.postDelayed(holdRunnable, HOLD_DELAY_MS)
+                        return true
+                    }
+                    MotionEvent.ACTION_MOVE -> {
+                        lastTouchX = event.rawX
+                        lastTouchY = event.rawY
+                        // Once hold-recording started the gesture is locked —
+                        // ignore movement, only release (UP) stops it.
+                        if (holdStarted) return true
+                        if (!moved) {
+                            val dx = event.rawX - initialTouchX
+                            val dy = event.rawY - initialTouchY
+                            if (Math.abs(dx) > touchSlopPx || Math.abs(dy) > touchSlopPx) {
+                                moved = true
+                                holdHandler.removeCallbacks(holdRunnable)
+                            }
+                        }
+                        return true
+                    }
+                    MotionEvent.ACTION_UP -> {
+                        holdHandler.removeCallbacks(holdRunnable)
+                        if (moved) return true
+                        if (holdStarted) {
+                            stopRecording()
+                            return true
+                        }
+                        // Quick tap: same path as the original click handler —
+                        // requests permission if missing, else toggles.
+                        onMicTapped()
+                        return true
+                    }
+                    MotionEvent.ACTION_CANCEL -> {
+                        // System-initiated abort (finger left view bounds,
+                        // parent intercepted, etc.) — clean up without
+                        // triggering the tap path.
+                        holdHandler.removeCallbacks(holdRunnable)
+                        if (holdStarted) stopRecording()
+                        return true
+                    }
+                }
+                return false
+            }
+        })
         openSettingsLink.setOnClickListener {
             val intent = Intent(
                 Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
@@ -188,6 +281,9 @@ class TryItFragment : OnboardingStepFragment() {
             else -> R.string.onb_try_tap_to_grant
         }
         hint.setText(res)
+        // Sub-hint about which permission option to pick — visible only
+        // before the user has granted.
+        grantHint.visibility = if (!isRecording && !hasMicPermission()) View.VISIBLE else View.GONE
     }
 
     private fun onMicTapped() {
@@ -199,7 +295,7 @@ class TryItFragment : OnboardingStepFragment() {
     }
 
     @SuppressLint("MissingPermission")
-    private fun startRecording() {
+    private fun startRecording(useVad: Boolean = true) {
         if (isRecording) return
         isRecording = true
         accumulated = StringBuilder()
@@ -207,7 +303,7 @@ class TryItFragment : OnboardingStepFragment() {
         bubble.setRecording(true)
         hint.setText(R.string.onb_try_tap_to_stop)
         renderResult()
-        bubble.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
+        Haptics.longPress(requireContext())
 
         val ctx = requireContext().applicationContext
         val rec = VadRecorder(ctx).also { recorder = it }
@@ -217,6 +313,7 @@ class TryItFragment : OnboardingStepFragment() {
                 withContext(Dispatchers.IO) { OfflineTranscriber.getInstance(ctx) }
             },
             onSegment = { text -> appendSegment(text) },
+            useVad = useVad,
         )
     }
 
@@ -227,7 +324,7 @@ class TryItFragment : OnboardingStepFragment() {
         recorder = null
         bubble.setRecording(false)
         refreshHint()
-        bubble.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+        Haptics.doubleTap(requireContext())
         // Contribute the recording duration to the dashboard "minutes" counter.
         // Word counts are added per-segment in appendSegment as text arrives.
         if (recordStartMs > 0L) {

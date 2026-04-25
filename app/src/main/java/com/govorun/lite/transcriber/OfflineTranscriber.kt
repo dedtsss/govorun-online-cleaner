@@ -23,6 +23,21 @@ class OfflineTranscriber private constructor(
     private val recognizer: OfflineRecognizer
 ) : Transcriber {
 
+    // Guards every call into the native sherpa-onnx session — both the hot
+    // path (createStream/decode/getResult) and release(). Without this, a
+    // release() on the IME-hidden path could race with an in-flight
+    // transcription tail and SEGV inside libsherpa-onnx-jni.so when
+    // createStream() is called against a freed ONNX session. Locking is
+    // cheap here — transcription holds the monitor for ~200–500 ms, and
+    // release blocks the caller (Main thread on idle UI) only briefly.
+    private val nativeLock = Any()
+
+    // Set to true once release() has destroyed the underlying ONNX session.
+    // Anyone who already holds (or later acquires) a stale reference to this
+    // OfflineTranscriber instance must check this flag inside the nativeLock
+    // before touching `recognizer` — otherwise we get a use-after-free SEGV.
+    @Volatile private var isReleased = false
+
     companion object {
         private const val TAG = "OfflineTranscriber"
 
@@ -39,8 +54,17 @@ class OfflineTranscriber private constructor(
 
         fun release() {
             synchronized(this) {
-                instance?.recognizer?.release()
+                val toRelease = instance ?: return
                 instance = null
+                // Take the per-instance native lock so any in-flight
+                // transcription finishes before we destroy the ONNX session.
+                // Mark as released *inside* the lock so any caller who got
+                // here later (via a cached reference) sees the flag and bails
+                // instead of touching the freed recognizer.
+                synchronized(toRelease.nativeLock) {
+                    toRelease.isReleased = true
+                    toRelease.recognizer.release()
+                }
             }
         }
 
@@ -106,14 +130,27 @@ class OfflineTranscriber private constructor(
         val buf = ByteBuffer.wrap(pcm).order(ByteOrder.LITTLE_ENDIAN).asShortBuffer()
         val samples = FloatArray(buf.remaining()) { buf.get().toFloat() / 32768f }
 
-        val stream = recognizer.createStream()
-        stream.acceptWaveform(samples, sampleRate = 16000)
-        recognizer.decode(stream)
-        val result = recognizer.getResult(stream)
-        stream.release()
+        // Hold the native lock for the entire critical section. release()
+        // can run at any time (IME hidden, onTrimMemory) and would crash
+        // the JNI layer if it freed the ONNX session mid-call. Inside the
+        // lock we also check isReleased — VadRecorder may have captured
+        // this instance before release() ran, in which case we must NOT
+        // dereference the freed recognizer.
+        val text = synchronized(nativeLock) {
+            if (isReleased) {
+                Log.w(TAG, "stopAudioAndGetTranscript called on released instance — dropping ${pcm.size}B")
+                return@synchronized ""
+            }
+            val stream = recognizer.createStream()
+            stream.acceptWaveform(samples, sampleRate = 16000)
+            recognizer.decode(stream)
+            val result = recognizer.getResult(stream)
+            stream.release()
+            result.text.trim()
+        }
 
-        Log.i(TAG, "Offline transcript: '${result.text}'")
-        result.text.trim()
+        Log.i(TAG, "Offline transcript: '$text'")
+        text
     }
 
     override fun disconnect() {

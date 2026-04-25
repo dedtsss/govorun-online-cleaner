@@ -9,19 +9,22 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.updatePadding
 import com.google.android.material.appbar.MaterialToolbar
+import com.google.android.material.button.MaterialButton
+import com.google.android.material.button.MaterialButtonToggleGroup
 import com.google.android.material.color.DynamicColors
 import com.google.android.material.color.MaterialColors
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.materialswitch.MaterialSwitch
 import com.google.android.material.slider.Slider
+import com.google.android.material.textview.MaterialTextView
 import com.govorun.lite.R
+import com.govorun.lite.overlay.BubbleView
 import com.govorun.lite.service.LiteAccessibilityService
 import com.govorun.lite.util.AccessibilityHelper
 import com.govorun.lite.util.Prefs
 
 class SettingsActivity : AppCompatActivity() {
 
-    private lateinit var serviceSectionHeader: View
     private lateinit var showServiceRow: View
     private lateinit var showServiceSwitch: MaterialSwitch
 
@@ -43,6 +46,42 @@ class SettingsActivity : AppCompatActivity() {
             insets
         }
 
+        // Preview bubble — real BubbleView right in Settings, so slider
+        // changes are visible immediately without opening a chat. Initial
+        // alpha is read here so the first paint matches stored prefs;
+        // size/scale comes from BubbleView's own Prefs read in init.
+        val previewBubble = findViewById<BubbleView>(R.id.previewBubble)
+        previewBubble.setIdleAlpha(Prefs.getBubbleAlpha(this))
+
+        val sideGroup = findViewById<MaterialButtonToggleGroup>(R.id.sideToggleGroup)
+        // Pre-check the button matching the stored side BEFORE wiring the
+        // listener so the initial state doesn't fire a side-change event.
+        val initialSideId = if (Prefs.getBubbleSide(this) == Prefs.BUBBLE_SIDE_LEFT)
+            R.id.sideLeft else R.id.sideRight
+        sideGroup.check(initialSideId)
+        applyPreviewSide(previewBubble, Prefs.getBubbleSide(this))
+        sideGroup.addOnButtonCheckedListener { _, checkedId, isChecked ->
+            if (!isChecked) return@addOnButtonCheckedListener
+            val side = if (checkedId == R.id.sideLeft) Prefs.BUBBLE_SIDE_LEFT
+                       else Prefs.BUBBLE_SIDE_RIGHT
+            Prefs.setBubbleSide(this, side)
+            applyPreviewSide(previewBubble, side)
+            LiteAccessibilityService.instance?.applyBubbleSideFromPrefs()
+        }
+
+        val sizeSlider = findViewById<Slider>(R.id.sizeSlider)
+        sizeSlider.valueFrom = Prefs.BUBBLE_SIZE_MIN
+        sizeSlider.valueTo = Prefs.BUBBLE_SIZE_MAX
+        sizeSlider.value = Prefs.getBubbleSize(this)
+        sizeSlider.addOnChangeListener { _, value, fromUser ->
+            if (!fromUser) return@addOnChangeListener
+            Prefs.setBubbleSize(this, value)
+            previewBubble.applySizeScaleFromPrefs()
+            // Size change requires a relayout — simplest is to rebuild the
+            // bubble view, same as how wallpaper-colour changes are handled.
+            LiteAccessibilityService.instance?.applyBubbleSizeFromPrefs()
+        }
+
         val transparencySlider = findViewById<Slider>(R.id.transparencySlider)
         transparencySlider.valueFrom = Prefs.BUBBLE_ALPHA_MIN
         transparencySlider.valueTo = Prefs.BUBBLE_ALPHA_MAX
@@ -50,6 +89,7 @@ class SettingsActivity : AppCompatActivity() {
         transparencySlider.addOnChangeListener { _, value, fromUser ->
             if (!fromUser) return@addOnChangeListener
             Prefs.setBubbleAlpha(this, value)
+            previewBubble.setIdleAlpha(value)
             // Service might be off right now (onboarding not finished, or user
             // disabled it). If it's on, nudge it so the overlay bubble reflects
             // the change immediately — no need to toggle or reopen anything.
@@ -65,7 +105,6 @@ class SettingsActivity : AppCompatActivity() {
         }
         hapticsRow.setOnClickListener { hapticsSwitch.toggle() }
 
-        serviceSectionHeader = findViewById(R.id.serviceSectionHeader)
         showServiceRow = findViewById(R.id.showServiceRow)
         showServiceSwitch = findViewById(R.id.showServiceSwitch)
         // Row is visible regardless of service state so the user always has a
@@ -81,6 +120,36 @@ class SettingsActivity : AppCompatActivity() {
                 promptEnableService()
             }
         }
+
+        findViewById<MaterialButton>(R.id.resetButton).setOnClickListener {
+            // Reset all customisation prefs to project defaults. Sliders and
+            // switch update via setValue/isChecked (no fromUser flag → our
+            // addOnChangeListener sees fromUser=false and skips the side-
+            // effects), so we apply preview + overlay changes manually after.
+            Prefs.setBubbleSize(this, Prefs.BUBBLE_SIZE_DEFAULT)
+            Prefs.setBubbleAlpha(this, Prefs.BUBBLE_ALPHA_DEFAULT)
+            Prefs.setHapticsEnabled(this, false)
+            Prefs.setBubbleSide(this, Prefs.BUBBLE_SIDE_RIGHT)
+            // Reset Y too — "factory defaults" should put the bubble back to
+            // the centre. A user who deliberately positioned it isn't going
+            // to hit Reset; anyone who does expects everything reverted.
+            Prefs.setBubbleY(this, 0)
+
+            sizeSlider.value = Prefs.BUBBLE_SIZE_DEFAULT
+            transparencySlider.value = Prefs.BUBBLE_ALPHA_DEFAULT
+            hapticsSwitch.isChecked = false
+            sideGroup.check(R.id.sideRight)
+
+            previewBubble.applySizeScaleFromPrefs()
+            previewBubble.setIdleAlpha(Prefs.BUBBLE_ALPHA_DEFAULT)
+            applyPreviewSide(previewBubble, Prefs.BUBBLE_SIDE_RIGHT)
+
+            LiteAccessibilityService.instance?.applyBubbleSizeFromPrefs()
+            LiteAccessibilityService.instance?.applyBubbleAlphaFromPrefs()
+            LiteAccessibilityService.instance?.applyBubbleSideFromPrefs()
+            // Position reset — a fresh bubble rebuild picks up the new Y=0.
+            LiteAccessibilityService.instance?.applyBubbleSizeFromPrefs()
+        }
     }
 
     override fun onResume() {
@@ -88,8 +157,35 @@ class SettingsActivity : AppCompatActivity() {
         refreshServiceSwitch()
     }
 
+    /**
+     * Push the preview bubble to the chosen side of its FrameLayout, so the
+     * Settings preview visually mirrors what the user picked. Uses the
+     * BubbleView's layout_gravity within its parent.
+     */
+    private fun applyPreviewSide(previewBubble: BubbleView, side: String) {
+        val lp = previewBubble.layoutParams as? android.widget.FrameLayout.LayoutParams ?: return
+        val horizontal = if (side == Prefs.BUBBLE_SIDE_LEFT) android.view.Gravity.START
+                         else android.view.Gravity.END
+        lp.gravity = horizontal or android.view.Gravity.CENTER_VERTICAL
+        previewBubble.layoutParams = lp
+    }
+
     private fun refreshServiceSwitch() {
-        showServiceSwitch.isChecked = AccessibilityHelper.isLiteServiceEnabled(this)
+        val enabled = AccessibilityHelper.isLiteServiceEnabled(this)
+        showServiceSwitch.isChecked = enabled
+        // Title shows current state ("включён" / "выключен"); body says what
+        // tapping the row will do. Without this dynamic update the row reads
+        // as "Показывать Говоруна" with a switch — and tapping it confusingly
+        // brings up a "выключить?" dialog when the user expected the switch
+        // to just flip.
+        findViewById<MaterialTextView>(R.id.showServiceTitle).setText(
+            if (enabled) R.string.settings_service_on_title
+            else R.string.settings_service_off_title
+        )
+        findViewById<MaterialTextView>(R.id.showServiceBody).setText(
+            if (enabled) R.string.settings_service_on_body
+            else R.string.settings_service_off_body
+        )
     }
 
     private fun confirmDisableService() {

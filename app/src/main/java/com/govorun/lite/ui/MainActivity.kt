@@ -27,6 +27,7 @@ import com.google.android.material.textview.MaterialTextView
 import com.govorun.lite.R
 import com.govorun.lite.stats.StatsStore
 import com.govorun.lite.util.AccessibilityHelper
+import com.govorun.lite.util.Prefs
 
 /**
  * Post-onboarding home screen.
@@ -51,6 +52,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var cardServiceButton: MaterialButton
     private lateinit var cardBatteryMissing: MaterialCardView
     private lateinit var cardBatteryButton: MaterialButton
+    private lateinit var cardWhatsNew: MaterialCardView
+    private lateinit var cardWhatsNewDismissButton: MaterialButton
 
     private lateinit var shortcutCard: View
     private lateinit var shortcutCardButton: MaterialButton
@@ -123,6 +126,13 @@ class MainActivity : AppCompatActivity() {
         cardBatteryMissing = findViewById(R.id.cardBatteryMissing)
         cardBatteryButton = findViewById(R.id.cardBatteryButton)
         cardBatteryButton.setOnClickListener { requestIgnoreBatteryOptimizations() }
+
+        cardWhatsNew = findViewById(R.id.cardWhatsNew)
+        cardWhatsNewDismissButton = findViewById(R.id.cardWhatsNewDismissButton)
+        cardWhatsNewDismissButton.setOnClickListener {
+            Prefs.setWhatsNewHintDismissed(this, true)
+            cardWhatsNew.visibility = View.GONE
+        }
 
         shortcutCard = findViewById(R.id.shortcutCard)
         shortcutCardButton = findViewById(R.id.shortcutCardButton)
@@ -263,6 +273,15 @@ class MainActivity : AppCompatActivity() {
         cardMicMissing.visibility = if (micOk) View.GONE else View.VISIBLE
         cardServiceMissing.visibility = if (serviceOk) View.GONE else View.VISIBLE
         cardBatteryMissing.visibility = if (batteryOk) View.GONE else View.VISIBLE
+
+        // "What's new in 1.0.4" FYI card — shown ONLY when the user has no
+        // pending setup problems (mic/service/battery all OK and the system
+        // shortcut isn't on). Don't compete with action items: a user with
+        // a broken mic should see the recovery card, not a "look at our
+        // new features" panel.
+        val showWhatsNew = micOk && serviceOk && batteryOk && !shortcutOn &&
+            !Prefs.isWhatsNewHintDismissed(this)
+        cardWhatsNew.visibility = if (showWhatsNew) View.VISIBLE else View.GONE
         // Stats and promo both hide while there are setup problems, so the
         // screen doesn't split attention between "fix this" cards and nice-
         // to-have surfaces. Matches the "needs setup" headline state.

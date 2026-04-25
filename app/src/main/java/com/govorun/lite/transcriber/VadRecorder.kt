@@ -109,6 +109,16 @@ class VadRecorder(private val context: Context) {
         scope: CoroutineScope,
         transcriberProvider: suspend () -> Transcriber,
         onSegment: suspend (String) -> Unit,
+        // useVad=true (default): Silero splits audio into segments on
+        // pauses, each segment transcribed and pasted independently —
+        // the right behaviour for tap-toggle dictation where the user
+        // expects paragraph breaks where they paused.
+        // useVad=false: pure raw-PCM accumulator, no segmentation.
+        // Whole hold-duration audio is sent to GigaAM in one shot,
+        // so a phrase like "сегодня в 25 минут 6" stays as one
+        // contextual recognition pass instead of being split into
+        // independent fragments and concatenated.
+        useVad: Boolean = true,
     ) {
         if (isActive) return
         isActive = true
@@ -125,7 +135,20 @@ class VadRecorder(private val context: Context) {
         val audioRecord = AudioRecord(
             MediaRecorder.AudioSource.MIC, SAMPLE_RATE,
             AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT, bufferSize
-        ).also { audioRecord = it }
+        )
+        // The AudioRecord constructor never throws — it just leaves the
+        // object in STATE_UNINITIALIZED if mic acquisition failed (mic
+        // busy with another app, permission revoked at runtime, or the
+        // previous recorder hasn't fully released its handle yet). Calling
+        // startRecording() on an uninitialized AudioRecord throws, which
+        // crashes the whole accessibility service. Bail gracefully here.
+        if (audioRecord.state != AudioRecord.STATE_INITIALIZED) {
+            Log.w(TAG, "AudioRecord uninitialized — mic busy / permission lost; aborting start")
+            audioRecord.release()
+            isActive = false
+            return
+        }
+        this.audioRecord = audioRecord
         audioRecord.startRecording()
         Log.i(TAG, "VAD recording started (mic capturing)")
 
@@ -139,6 +162,35 @@ class VadRecorder(private val context: Context) {
             val segmentChannel = Channel<ByteArray>(capacity = SEGMENT_QUEUE_CAPACITY)
 
             val readerJob = launch {
+                if (!useVad) {
+                    // Raw-PCM accumulator path — used by hold-to-talk so the
+                    // entire utterance reaches GigaAM as one block, with the
+                    // model's full context window applied to the whole phrase.
+                    val pcmWindow = ByteArray(windowBytes)
+                    val rawBuffer = ByteArrayOutputStream()
+                    try {
+                        while (coroutineContext.isActive && SystemClock.elapsedRealtime() < stopAtMs) {
+                            val read = audioRecord.read(pcmWindow, 0, windowBytes)
+                            if (read > 0) rawBuffer.write(pcmWindow, 0, read)
+                            else if (read < 0) break
+                        }
+                    } finally {
+                        if (rawBuffer.size() >= MIN_TAIL_BYTES) {
+                            val pcm = rawBuffer.toByteArray()
+                            Log.i(TAG, "Raw mode: queueing ${pcm.size}B (~${pcm.size / 32}ms) as single segment")
+                            if (!segmentChannel.trySend(pcm).isSuccess) {
+                                Log.w(TAG, "Raw segment queue full — dropped")
+                            }
+                        } else {
+                            Log.w(TAG, "Raw mode: tail too short (${rawBuffer.size()}B) — nothing to transcribe")
+                        }
+                        rawBuffer.reset()
+                        segmentChannel.close()
+                        Log.i(TAG, "Raw reader stopped")
+                    }
+                    return@launch
+                }
+
                 val pcmWindow = ByteArray(windowBytes)
                 // Raw PCM captured since the last VAD segment boundary. Acts as a
                 // safety-net if the user stops recording mid-utterance and VAD's
