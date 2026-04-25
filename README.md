@@ -105,6 +105,10 @@ adb install --user 0 -r app/build/outputs/apk/debug/app-debug.apk
 Без этого шага переключатель так и останется серым. Через RuStore все
 эти танцы не нужны — магазин автоматически получает доверие системы.
 
+## История версий
+
+См. [CHANGELOG.md](CHANGELOG.md) — что менялось в каждой версии. Подписанные APK к каждому релизу — на странице [Releases](https://github.com/amidexe/govorun-lite/releases).
+
 ## Лицензия
 
 Код приложения — MIT, см. [LICENSE](LICENSE).
