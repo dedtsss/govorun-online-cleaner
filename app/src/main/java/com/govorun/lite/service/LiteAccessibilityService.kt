@@ -4,6 +4,7 @@ import android.Manifest
 import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.InputMethod
 import android.annotation.SuppressLint
+import android.app.KeyguardManager
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -79,6 +80,7 @@ class LiteAccessibilityService : AccessibilityService() {
     private var isImeVisible = false
     private var bubbleView: BubbleView? = null
     private var windowManager: WindowManager? = null
+    private var keyguardManager: KeyguardManager? = null
     private var bubbleParams: WindowManager.LayoutParams? = null
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
@@ -99,6 +101,18 @@ class LiteAccessibilityService : AccessibilityService() {
         }
     }
 
+    // Re-evaluates bubble visibility when the user unlocks the device. Without
+    // this, if a keyboard was already up on the lockscreen (e.g. password
+    // entry) we'd correctly hide the bubble, but on unlock — when the same IME
+    // window stays focused (notification reply, app behind keyguard) — the
+    // accessibility windows-changed event may not refire, leaving the bubble
+    // hidden until the next focus change.
+    private val userPresentReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            if (intent?.action == Intent.ACTION_USER_PRESENT) updateImeVisibility()
+        }
+    }
+
     override fun onCreateInputMethod(): InputMethod {
         return super.onCreateInputMethod().also { accessibilityInputMethod = it }
     }
@@ -110,6 +124,7 @@ class LiteAccessibilityService : AccessibilityService() {
         Log.i(TAG, "Accessibility service connected")
 
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
+        keyguardManager = getSystemService(KEYGUARD_SERVICE) as KeyguardManager
 
         bubbleParams = WindowManager.LayoutParams(
             WindowManager.LayoutParams.WRAP_CONTENT,
@@ -131,6 +146,7 @@ class LiteAccessibilityService : AccessibilityService() {
         attachFreshBubble(initiallyVisible = false)
 
         registerReceiver(screenOffReceiver, IntentFilter(Intent.ACTION_SCREEN_OFF))
+        registerReceiver(userPresentReceiver, IntentFilter(Intent.ACTION_USER_PRESENT))
 
         // Initial check — if the service starts while a keyboard is already up,
         // we'd otherwise wait for the next windows-changed event.
@@ -182,18 +198,26 @@ class LiteAccessibilityService : AccessibilityService() {
     }
 
     private fun updateImeVisibility(pkg: String? = null) {
-        val visible = try {
+        val imeVisible = try {
             windows?.any { it.type == AccessibilityWindowInfo.TYPE_INPUT_METHOD } == true
         } catch (e: Exception) {
             false
         }
-        if (visible == isImeVisible) return
-        isImeVisible = visible
-        if (!visible) stopVadRecording(silent = true)
+        // Hide on keyguard even if an IME is technically visible (lockscreen
+        // password entry, notification reply over keyguard). The bubble there
+        // is unwanted noise — the user can't dictate into a password field
+        // anyway, and overlay UI on the lockscreen erodes trust regardless of
+        // whether we actually read the field (we don't).
+        val locked = keyguardManager?.isKeyguardLocked == true
+        val shouldShow = imeVisible && !locked
+
+        if (shouldShow == isImeVisible) return
+        isImeVisible = shouldShow
+        if (!shouldShow) stopVadRecording(silent = true)
         bubbleView?.post {
-            bubbleView?.visibility = if (visible) View.VISIBLE else View.GONE
+            bubbleView?.visibility = if (shouldShow) View.VISIBLE else View.GONE
         }
-        AppLog.log(this, "Service: imeVisible=$visible pkg=$pkg")
+        AppLog.log(this, "Service: bubbleShow=$shouldShow ime=$imeVisible locked=$locked pkg=$pkg")
     }
 
     private fun pasteText(text: String) {
@@ -485,6 +509,7 @@ class LiteAccessibilityService : AccessibilityService() {
         stopVadRecording(silent = true)
         scope.cancel()
         try { unregisterReceiver(screenOffReceiver) } catch (_: Exception) {}
+        try { unregisterReceiver(userPresentReceiver) } catch (_: Exception) {}
         bubbleView?.let { windowManager?.removeView(it) }
         super.onDestroy()
     }
