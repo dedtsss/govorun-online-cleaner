@@ -170,25 +170,6 @@ class LiteAccessibilityService : AccessibilityService() {
         }
     }
 
-    /**
-     * Layer 1 — always on, no opt-in. When the system is genuinely short on
-     * memory, release the model so we don't get killed (or contribute to
-     * killing other apps). RUNNING_LOW is the right threshold: it fires
-     * while we're a perceptible/foreground process under real pressure;
-     * RUNNING_MODERATE(5) is just an early hint that we ignore.
-     *
-     * The trim-only release is a "we're a good citizen" baseline — if the
-     * system never asks, we never release here. The aggressive opt-in path
-     * is in updateImeVisibility() below.
-     */
-    override fun onTrimMemory(level: Int) {
-        super.onTrimMemory(level)
-        if (level >= TRIM_MEMORY_RUNNING_LOW) {
-            AppLog.log(this, "TrimMemory level=$level → release model")
-            OfflineTranscriber.release()
-        }
-    }
-
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         event ?: return
         when (event.eventType) {
