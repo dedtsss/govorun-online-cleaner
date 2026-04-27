@@ -36,3 +36,5 @@ scripts/prepare-release.sh
 .claude/
 # Project-internal notes for AI assistants — kept local, not pushed.
 CLAUDE.md
+# Release runbook — has internal SMB paths and process details, kept local
+RELEASE.md
