@@ -15,7 +15,12 @@ object Prefs {
     private const val KEY_BUBBLE_SIZE = "bubble_size"
     private const val KEY_BUBBLE_Y = "bubble_y"
     private const val KEY_BUBBLE_SIDE = "bubble_side"
-    private const val KEY_WHATS_NEW_HINT_DISMISSED = "whats_new_hint_dismissed"
+    // Version-suffixed so each release with new feature highlights re-shows
+    // the card to existing users (their dismissal of the previous version's
+    // card doesn't carry over). Bump the suffix when the card content changes.
+    private const val KEY_WHATS_NEW_HINT_DISMISSED = "whats_new_hint_dismissed_v106"
+    private const val KEY_DICTIONARY = "dictionary_text"
+    private const val KEY_DICTIONARY_ENABLED = "dictionary_enabled"
 
     const val BUBBLE_SIDE_RIGHT = "right"
     const val BUBBLE_SIDE_LEFT = "left"
@@ -135,6 +140,37 @@ object Prefs {
         context.getSharedPreferences(FILE_NAME, Context.MODE_PRIVATE)
             .edit()
             .putBoolean(KEY_WHATS_NEW_HINT_DISMISSED, dismissed)
+            .apply()
+    }
+
+    // User dictionary — raw text in "key=value" per line format. Parsing,
+    // word-boundary regex compilation and replacement happen in
+    // [com.govorun.lite.transcriber.Dictionary]. Stored as a single string
+    // so import/export trivially round-trips through ACTION_OPEN/CREATE_DOCUMENT.
+    fun getDictionary(context: Context): String =
+        context.getSharedPreferences(FILE_NAME, Context.MODE_PRIVATE)
+            .getString(KEY_DICTIONARY, "") ?: ""
+
+    fun setDictionary(context: Context, text: String) {
+        context.getSharedPreferences(FILE_NAME, Context.MODE_PRIVATE)
+            .edit()
+            .putString(KEY_DICTIONARY, text)
+            .apply()
+    }
+
+    // Master on/off for the dictionary. Default OFF so a brand-new user
+    // can browse the editor (with starter examples) without their next
+    // dictation being silently transformed by rules they never asked for.
+    // Enabling it is a deliberate one-tap action inside the dictionary
+    // screen, after the user has seen what's there.
+    fun isDictionaryEnabled(context: Context): Boolean =
+        context.getSharedPreferences(FILE_NAME, Context.MODE_PRIVATE)
+            .getBoolean(KEY_DICTIONARY_ENABLED, false)
+
+    fun setDictionaryEnabled(context: Context, enabled: Boolean) {
+        context.getSharedPreferences(FILE_NAME, Context.MODE_PRIVATE)
+            .edit()
+            .putBoolean(KEY_DICTIONARY_ENABLED, enabled)
             .apply()
     }
 

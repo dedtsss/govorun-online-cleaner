@@ -93,8 +93,9 @@
          doesn't compete with action items. Disappears for good after the
          user taps "Понятно". -->
     <string name="main_card_whats_new_title">Что нового</string>
-    <string name="main_card_whats_new_line1">• Удерживайте птичку для записи, отпустите для отправки текста</string>
-    <string name="main_card_whats_new_line2">• Загляните в настройки — внешний вид птички теперь настраивается</string>
+    <string name="main_card_whats_new_line1">• Свой словарь автозамен в настройках — научите Говорун вашим терминам, именам, аббревиатурам</string>
+    <string name="main_card_whats_new_line2">• Удерживайте птичку для записи, отпустите для отправки текста</string>
+    <string name="main_card_whats_new_line3">• В настройках можно настроить внешний вид птички</string>
     <string name="main_card_whats_new_dismiss">Понятно</string>
     <string name="main_needs_setup_sub">Несколько мелочей надо подкрутить — карточки ниже подскажут, что и где.</string>
     <string name="main_disable_service">Выключить Говоруна</string>
@@ -220,4 +221,27 @@
     <string name="main_pro_feat_more">…и многое другое, что сделает голосовой ввод удобнее</string>
     <string name="main_pro_review_button">Оставить отзыв в RuStore</string>
     <string name="main_pro_review_url">https://apps.rustore.ru/app/com.govorun.lite</string>
+
+    <!-- Dictionary screen -->
+    <string name="dict_title">Свой словарь</string>
+    <string name="dict_help_action">Справка</string>
+    <string name="dict_help_dialog_title">Как заполнять</string>
+    <string name="dict_help_dialog_body">Каждое правило с новой строки в формате «ключ=значение». Регистр не важен.\n\nСтрока без знака «=» — слово будет вырезано из распознанного текста.\nСтрока, начинающаяся с «#» — комментарий, не учитывается.\n\nПравила применяются по порядку — длинные и более конкретные пишите выше.\n\nГоворун может слышать одно и то же слово по-разному (например, «джимэйл», «джимейл», «гмайл») — добавляйте все варианты звучания.\n\nСовет: можно попросить ChatGPT, Gemini, Claude или YandexGPT составить словарь под вашу профессию или хобби в формате «ключ=значение». Скопируйте результат и вставьте сюда долгим тапом по полю редактора.</string>
+    <string name="dict_help_dialog_close">Понятно</string>
+    <string name="dict_editor_hint">ключ=значение</string>
+    <!-- Pre-filled when the dictionary is empty. Self-documents the format
+         right inside the editor — same idea as a starter shell config or
+         crontab. Examples use safe terms (GitHub, DNS) that are unlikely
+         to appear in normal speech, so users won't get surprise replacements
+         even if they accidentally uncomment a line. -->
+    <string name="dict_starter_template"># Термины\nгитхаб=GitHub\n\n# Имена\nартем=Артём\n\n# Сорняки (убирает)\nтипа</string>
+    <string name="dict_inline_hint">Формат: ключ=значение. Слово без «=» — удаляется из речи. Подробнее — иконка справа.</string>
+    <string name="dict_toggle_title">Применять словарь</string>
+    <string name="dict_toggle_subtitle">К распознанному тексту автоматически</string>
+    <string name="dict_save">Сохранить</string>
+    <string name="dict_saved">Словарь сохранён</string>
+
+    <!-- Settings: entry-point card to the dictionary screen -->
+    <string name="settings_dict_card_title">Свой словарь</string>
+    <string name="settings_dict_card_body">Замены слов в распознанной речи. Например: имена, термины, аббревиатуры.</string>
 </resources>

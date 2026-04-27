@@ -1,6 +1,7 @@
 package com.govorun.lite.ui
 
 import android.content.DialogInterface
+import android.content.Intent
 import android.os.Bundle
 import android.view.View
 import androidx.activity.enableEdgeToEdge
@@ -104,6 +105,10 @@ class SettingsActivity : AppCompatActivity() {
             Prefs.setHapticsEnabled(this, checked)
         }
         hapticsRow.setOnClickListener { hapticsSwitch.toggle() }
+
+        findViewById<View>(R.id.dictionaryRow).setOnClickListener {
+            startActivity(Intent(this, DictionaryActivity::class.java))
+        }
 
         showServiceRow = findViewById(R.id.showServiceRow)
         showServiceSwitch = findViewById(R.id.showServiceSwitch)

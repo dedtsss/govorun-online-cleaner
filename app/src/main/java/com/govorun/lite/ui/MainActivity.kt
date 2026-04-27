@@ -248,7 +248,11 @@ class MainActivity : AppCompatActivity() {
         // to our bubble that disables the service when tapped — count it as a
         // setup problem so the headline and promo card honestly reflect state.
         val shortcutOn = AccessibilityHelper.isLiteShortcutEnabled(this)
-        val allOk = micOk && serviceOk && batteryOk && !shortcutOn
+        // Critical = blocks the bubble entirely (no mic, no service, or shortcut
+        // turns it off). Battery is recommended, not critical: many users on
+        // stock Android with light use never hit the kill, and we shouldn't
+        // hold the whole main screen hostage over an optional optimisation.
+        val criticalOk = micOk && serviceOk && !shortcutOn
 
         // Only surface the shortcut card when the service is on — otherwise
         // the user is still in "enable me first" mode and the extra advisory
@@ -256,11 +260,11 @@ class MainActivity : AppCompatActivity() {
         shortcutCard.visibility = if (serviceOk && shortcutOn) View.VISIBLE else View.GONE
 
         when {
-            showJustFinished && allOk -> {
+            showJustFinished && criticalOk -> {
                 headline.setText(R.string.main_just_finished)
                 subline.setText(R.string.main_just_finished_sub)
             }
-            allOk -> {
+            criticalOk -> {
                 headline.setText(R.string.main_ready)
                 subline.setText(R.string.main_hint)
             }
@@ -272,21 +276,20 @@ class MainActivity : AppCompatActivity() {
 
         cardMicMissing.visibility = if (micOk) View.GONE else View.VISIBLE
         cardServiceMissing.visibility = if (serviceOk) View.GONE else View.VISIBLE
+        // Battery card is independent of criticalOk — it co-exists with stats
+        // and promo as a soft "recommended" hint, not a setup blocker.
         cardBatteryMissing.visibility = if (batteryOk) View.GONE else View.VISIBLE
 
-        // "What's new in 1.0.4" FYI card — shown ONLY when the user has no
-        // pending setup problems (mic/service/battery all OK and the system
-        // shortcut isn't on). Don't compete with action items: a user with
-        // a broken mic should see the recovery card, not a "look at our
-        // new features" panel.
-        val showWhatsNew = micOk && serviceOk && batteryOk && !shortcutOn &&
-            !Prefs.isWhatsNewHintDismissed(this)
+        // "What's new" FYI card — gated only on critical readiness + dismissal.
+        // A user without battery exemption can still see new-feature highlights;
+        // they're set up enough to enjoy the app.
+        val showWhatsNew = criticalOk && !Prefs.isWhatsNewHintDismissed(this)
         cardWhatsNew.visibility = if (showWhatsNew) View.VISIBLE else View.GONE
-        // Stats and promo both hide while there are setup problems, so the
-        // screen doesn't split attention between "fix this" cards and nice-
-        // to-have surfaces. Matches the "needs setup" headline state.
-        statsCard.visibility = if (allOk) View.VISIBLE else View.GONE
-        promoCard.visibility = if (allOk) View.VISIBLE else View.GONE
+        // Stats and promo hide only while there are *critical* problems —
+        // the screen shouldn't split attention between "fix this NOW" cards
+        // and nice-to-have surfaces. Battery being unset doesn't qualify.
+        statsCard.visibility = if (criticalOk) View.VISIBLE else View.GONE
+        promoCard.visibility = if (criticalOk) View.VISIBLE else View.GONE
     }
 
     private fun openAppDetails() {

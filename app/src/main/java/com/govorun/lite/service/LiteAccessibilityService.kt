@@ -27,6 +27,7 @@ import com.govorun.lite.R
 import com.govorun.lite.model.GigaAmModel
 import com.govorun.lite.overlay.BubbleView
 import com.govorun.lite.stats.StatsStore
+import com.govorun.lite.transcriber.Dictionary
 import com.govorun.lite.transcriber.OfflineTranscriber
 import com.govorun.lite.transcriber.VadRecorder
 import com.govorun.lite.ui.MainActivity
@@ -174,7 +175,12 @@ class LiteAccessibilityService : AccessibilityService() {
         event ?: return
         when (event.eventType) {
             AccessibilityEvent.TYPE_WINDOWS_CHANGED,
-            AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED -> updateImeVisibility(event.packageName?.toString())
+            AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED,
+            // typeViewFocused fires when the user moves focus between fields
+            // inside the same window — e.g. login screen email -> password.
+            // Without it, the IME-window event won't refire (the same IME stays
+            // visible) and we won't know to hide the bubble for the new field.
+            AccessibilityEvent.TYPE_VIEW_FOCUSED -> updateImeVisibility(event.packageName?.toString())
         }
     }
 
@@ -190,7 +196,10 @@ class LiteAccessibilityService : AccessibilityService() {
         // anyway, and overlay UI on the lockscreen erodes trust regardless of
         // whether we actually read the field (we don't).
         val locked = keyguardManager?.isKeyguardLocked == true
-        val shouldShow = imeVisible && !locked
+        // Hide on password fields anywhere in any app. Detection lives in
+        // InputFieldFilter — see that file for the full rationale.
+        val passwordField = InputFieldFilter.isPasswordField(accessibilityInputMethod)
+        val shouldShow = imeVisible && !locked && !passwordField
 
         if (shouldShow == isImeVisible) return
         isImeVisible = shouldShow
@@ -198,20 +207,28 @@ class LiteAccessibilityService : AccessibilityService() {
         bubbleView?.post {
             bubbleView?.visibility = if (shouldShow) View.VISIBLE else View.GONE
         }
-        AppLog.log(this, "Service: bubbleShow=$shouldShow ime=$imeVisible locked=$locked pkg=$pkg")
+        AppLog.log(this, "Service: bubbleShow=$shouldShow ime=$imeVisible locked=$locked password=$passwordField pkg=$pkg")
     }
 
     private fun pasteText(text: String) {
         if (text.isBlank()) return
+        // Apply user dictionary BEFORE commitText. This is a lexical
+        // post-pass — fixing jargon, abbreviations, proper-noun spellings
+        // the recogniser doesn't know. Empty dictionary returns the text
+        // unchanged, so this costs nothing for users who don't set one up.
+        val replaced = Dictionary.applyReplacements(this, text)
+        if (replaced != text) {
+            AppLog.log(this, "Dictionary applied: '${text.take(40)}' → '${replaced.take(40)}'")
+        }
         val connection = accessibilityInputMethod?.currentInputConnection
         if (connection == null) {
-            AppLog.log(this, "Paste: InputConnection=null — dropping '${text.take(40)}'")
+            AppLog.log(this, "Paste: InputConnection=null — dropping '${replaced.take(40)}'")
             return
         }
-        val spacedText = prependSpaceIfNeeded(text, connection)
+        val spacedText = prependSpaceIfNeeded(replaced, connection)
         connection.commitText(spacedText, 1, null)
         AppLog.log(this, "Paste: commitText len=${spacedText.length}")
-        StatsStore.addWords(this, StatsStore.countWords(text))
+        StatsStore.addWords(this, StatsStore.countWords(replaced))
     }
 
     private fun prependSpaceIfNeeded(
