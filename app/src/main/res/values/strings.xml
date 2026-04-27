@@ -84,7 +84,7 @@
     <string name="main_card_service_body">Птичка не появится в других программах, пока вы не включили «Говорун — голосовой ввод» в специальных возможностях.</string>
     <string name="main_card_service_button">Разрешить специальные возможности</string>
     <string name="main_card_battery_title">Разрешите работу в фоне</string>
-    <string name="main_card_battery_body">Иначе Андроид выгрузит Говоруна, и вам придётся включать его заново.</string>
+    <string name="main_card_battery_body">Без этого Android со временем может выгрузить Говоруна, и птичка перестанет появляться — пока вы заново не откроете приложение.</string>
     <string name="main_card_battery_button">Разрешить</string>
 
     <!-- One-time "What's new in 1.0.4" card. Shown on the main screen
