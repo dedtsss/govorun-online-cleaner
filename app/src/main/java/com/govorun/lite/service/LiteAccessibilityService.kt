@@ -84,6 +84,12 @@ class LiteAccessibilityService : AccessibilityService() {
     private var keyguardManager: KeyguardManager? = null
     private var bubbleParams: WindowManager.LayoutParams? = null
 
+    // User-controlled "hide bubble" override, toggled via the Quick Settings
+    // tile. Runtime-only (not persisted) — service restart resets to false.
+    // When true, updateImeVisibility() forces the bubble hidden regardless
+    // of IME state. See toggleBubbleVisibility().
+    @Volatile private var manualHide: Boolean = false
+
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private var vadRecorder: VadRecorder? = null
     @Volatile private var isVadActive = false
@@ -204,10 +210,12 @@ class LiteAccessibilityService : AccessibilityService() {
         if (shouldShow == isImeVisible) return
         isImeVisible = shouldShow
         if (!shouldShow) stopVadRecording(silent = true)
-        bubbleView?.post {
-            bubbleView?.visibility = if (shouldShow) View.VISIBLE else View.GONE
-        }
-        AppLog.log(this, "Service: bubbleShow=$shouldShow ime=$imeVisible locked=$locked password=$passwordField pkg=$pkg")
+        // Manual-hide override (Quick Settings tile) wins over the
+        // IME-driven default — if the user explicitly hid the bubble,
+        // keep it gone even when a text field gets focus.
+        val effectiveVisibility = if (shouldShow && !manualHide) View.VISIBLE else View.GONE
+        bubbleView?.post { bubbleView?.visibility = effectiveVisibility }
+        AppLog.log(this, "Service: bubbleShow=$shouldShow ime=$imeVisible locked=$locked password=$passwordField manualHide=$manualHide pkg=$pkg")
     }
 
     private fun pasteText(text: String) {
@@ -486,6 +494,32 @@ class LiteAccessibilityService : AccessibilityService() {
      */
     fun applyBubbleSizeFromPrefs() {
         attachFreshBubble(initiallyVisible = isImeVisible)
+    }
+
+    /**
+     * Quick Settings Tile read-out. True when the bubble is currently visible
+     * on screen (IME up, not blocked by lockscreen/password). The Tile uses
+     * this for its active/inactive state.
+     */
+    fun isBubbleVisible(): Boolean =
+        !manualHide && bubbleView?.visibility == View.VISIBLE
+
+    /**
+     * Quick Settings Tile action. Toggles the bubble's user-controlled
+     * "manual hide" override. When true, updateImeVisibility() will keep
+     * the bubble hidden even if the IME is up — the user explicitly asked
+     * for it to disappear. Override is runtime-only; a service restart
+     * resets it to false (the default behaviour resumes).
+     */
+    fun toggleBubbleVisibility() {
+        manualHide = !manualHide
+        // Force-evaluate visibility right now so the user sees the change
+        // immediately on the next frame, not on the next IME event.
+        if (manualHide) {
+            bubbleView?.post { bubbleView?.visibility = View.GONE }
+        } else if (isImeVisible) {
+            bubbleView?.post { bubbleView?.visibility = View.VISIBLE }
+        }
     }
 
     /**
