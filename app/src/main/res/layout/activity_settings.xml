@@ -235,19 +235,83 @@
                     android:layout_marginStart="16dp" />
             </LinearLayout>
 
-            <!-- Reset all bubble-customisation settings (size, transparency,
-                 haptics) back to factory defaults. Text button so it doesn't
-                 fight the section visually — destructive enough that we want
-                 the user to read it, not so destructive that it needs an
-                 OutlinedButton or a confirm dialog. -->
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/resetButton"
-                style="@style/Widget.Material3.Button.TextButton"
-                android:layout_width="wrap_content"
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_marginHorizontal="16dp"
+                android:layout_marginVertical="8dp"
+                android:background="?attr/colorOutlineVariant" />
+
+            <!-- Pause length — VAD silence threshold preset. Default Short
+                 matches the value shipped in 1.0.6 and earlier; existing
+                 users see no behaviour change. Long is what RuStore feedback
+                 ("she pauses to think and the sentence gets cut") asked for. -->
+            <LinearLayout
+                android:id="@+id/pauseLengthRow"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
-                android:layout_marginTop="4dp"
-                android:text="@string/settings_reset" />
+                android:gravity="center_vertical"
+                android:minHeight="72dp"
+                android:orientation="vertical"
+                android:paddingHorizontal="16dp"
+                android:paddingVertical="12dp">
+
+                <com.google.android.material.textview.MaterialTextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/settings_pause_title"
+                    android:textAppearance="?attr/textAppearanceTitleMedium" />
+
+                <com.google.android.material.textview.MaterialTextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:text="@string/settings_pause_body"
+                    android:textAppearance="?attr/textAppearanceBodyMedium"
+                    android:textColor="?attr/colorOnSurfaceVariant" />
+
+                <com.google.android.material.button.MaterialButtonToggleGroup
+                    android:id="@+id/pauseToggleGroup"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    app:singleSelection="true"
+                    app:selectionRequired="true">
+
+                    <Button
+                        android:id="@+id/pauseShort"
+                        style="?attr/materialButtonOutlinedStyle"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/settings_pause_short" />
+
+                    <Button
+                        android:id="@+id/pauseMedium"
+                        style="?attr/materialButtonOutlinedStyle"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/settings_pause_medium" />
+
+                    <Button
+                        android:id="@+id/pauseLong"
+                        style="?attr/materialButtonOutlinedStyle"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/settings_pause_long" />
+                </com.google.android.material.button.MaterialButtonToggleGroup>
+
+                <!-- Helper hint that changes per preset to explain the
+                     practical effect. Keeps the title/body short while
+                     letting the user-facing copy be specific. -->
+                <com.google.android.material.textview.MaterialTextView
+                    android:id="@+id/pauseHint"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:textAppearance="?attr/textAppearanceBodySmall"
+                    android:textColor="?attr/colorOnSurfaceVariant" />
+
+            </LinearLayout>
 
             <!-- User dictionary entry-point. Single clickable row matching
                  the showServiceRow pattern below — title + body + chevron-
@@ -337,6 +401,29 @@
                     android:clickable="false"
                     android:focusable="false" />
             </LinearLayout>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_marginHorizontal="16dp"
+                android:layout_marginVertical="8dp"
+                android:background="?attr/colorOutlineVariant" />
+
+            <!-- Reset all customisation prefs (bubble, haptics, pause length)
+                 back to defaults. Sits at the bottom because it touches every
+                 other setting on the screen — destructive enough that we want
+                 the user to read it, not so destructive it needs an
+                 OutlinedButton or confirm dialog. Dictionary is intentionally
+                 NOT cleared here (separate clear action inside its own screen). -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/resetButton"
+                style="@style/Widget.Material3.Button.TextButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:layout_marginTop="4dp"
+                android:layout_marginBottom="8dp"
+                android:text="@string/settings_reset" />
         </LinearLayout>
     </androidx.core.widget.NestedScrollView>
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

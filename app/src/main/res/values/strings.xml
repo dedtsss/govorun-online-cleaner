@@ -93,9 +93,12 @@
          doesn't compete with action items. Disappears for good after the
          user taps "Понятно". -->
     <string name="main_card_whats_new_title">Что нового</string>
-    <string name="main_card_whats_new_line1">• Свой словарь автозамен в настройках — научите Говорун вашим терминам, именам, аббревиатурам</string>
-    <string name="main_card_whats_new_line2">• Удерживайте птичку для записи, отпустите для отправки текста</string>
-    <string name="main_card_whats_new_line3">• В настройках можно настроить внешний вид птички</string>
+    <string name="main_card_whats_new_subhead_settings">В настройках:</string>
+    <string name="main_card_whats_new_subhead_mode">Новый режим:</string>
+    <string name="main_card_whats_new_line1">• Длина паузы — Говорун подстраивается под ваш темп речи</string>
+    <string name="main_card_whats_new_line2">• Свой словарь автозамен — для терминов, имён, аббревиатур</string>
+    <string name="main_card_whats_new_line3">• Размер, прозрачность и расположение птички</string>
+    <string name="main_card_whats_new_line4">• Удерживайте птичку для записи длинной фразы — отпустите, отправит текст</string>
     <string name="main_card_whats_new_dismiss">Понятно</string>
     <string name="main_needs_setup_sub">Несколько мелочей надо подкрутить — карточки ниже подскажут, что и где.</string>
     <string name="main_disable_service">Выключить Говоруна</string>
@@ -244,4 +247,13 @@
     <!-- Settings: entry-point card to the dictionary screen -->
     <string name="settings_dict_card_title">Свой словарь</string>
     <string name="settings_dict_card_body">Замены слов в распознанной речи. Например: имена, термины, аббревиатуры.</string>
+
+    <string name="settings_pause_title">Длина паузы</string>
+    <string name="settings_pause_body">Подстройте под ваш темп. После паузы Говорун заканчивает предложение - если точки ставятся раньше чем вы закончили мысль, попробуйте Среднюю или Длинную.</string>
+    <string name="settings_pause_short">Короткая</string>
+    <string name="settings_pause_medium">Средняя</string>
+    <string name="settings_pause_long">Длинная</string>
+    <string name="settings_pause_hint_short">Стандартное поведение - быстрая реакция.</string>
+    <string name="settings_pause_hint_medium">Чуть больше времени на размышления между предложениями.</string>
+    <string name="settings_pause_hint_long">Долгие задумчивые паузы не обрывают предложение.</string>
 </resources>

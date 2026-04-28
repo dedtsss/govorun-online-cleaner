@@ -7,6 +7,7 @@ import android.media.AudioRecord
 import android.media.MediaRecorder
 import android.os.SystemClock
 import android.util.Log
+import com.govorun.lite.util.Prefs
 import com.k2fsa.sherpa.onnx.SileroVadModelConfig
 import com.k2fsa.sherpa.onnx.TenVadModelConfig
 import com.k2fsa.sherpa.onnx.Vad
@@ -56,20 +57,37 @@ class VadRecorder(private val context: Context) {
          * latency stays tight and their first spoken word isn't lost.
          */
         @Volatile private var sharedVad: Vad? = null
+        @Volatile private var sharedMinSilenceSeconds: Float = 0f
         private val vadLock = Any()
 
         fun warmUp(context: Context) {
-            sharedVad ?: synchronized(vadLock) {
-                sharedVad ?: run { sharedVad = buildVad(context) }
-            }
+            getOrBuildVad(context, Prefs.getPauseLengthSeconds(context))
         }
 
-        private fun buildVad(context: Context): Vad {
+        // Returns the cached Vad, rebuilding it if the user's pause-length
+        // pref changed since the last build. Silero's minSilenceDuration is
+        // baked into the model config at construction time, so changing it
+        // requires throwing away the instance.
+        fun getOrBuildVad(context: Context, minSilenceSeconds: Float): Vad =
+            synchronized(vadLock) {
+                val existing = sharedVad
+                if (existing != null && sharedMinSilenceSeconds == minSilenceSeconds) {
+                    existing
+                } else {
+                    existing?.release()
+                    val fresh = buildVad(context, minSilenceSeconds)
+                    sharedVad = fresh
+                    sharedMinSilenceSeconds = minSilenceSeconds
+                    fresh
+                }
+            }
+
+        private fun buildVad(context: Context, minSilenceSeconds: Float): Vad {
             val modelPath = ensureVadModelPath(context)
             val sileroConfig = SileroVadModelConfig(
                 model = modelPath,
                 threshold = 0.5f,
-                minSilenceDuration = 0.5f,
+                minSilenceDuration = minSilenceSeconds,
                 minSpeechDuration = 0.25f,
                 windowSize = VAD_WINDOW_SIZE,
                 maxSpeechDuration = 30.0f
@@ -153,9 +171,7 @@ class VadRecorder(private val context: Context) {
         Log.i(TAG, "VAD recording started (mic capturing)")
 
         job = scope.launch(Dispatchers.IO) {
-            val vad = synchronized(vadLock) {
-                sharedVad ?: buildVad(context).also { sharedVad = it }
-            }
+            val vad = getOrBuildVad(context, Prefs.getPauseLengthSeconds(context))
             // Cached instance carries state from previous session — wipe it.
             try { vad.reset() } catch (e: Exception) { Log.w(TAG, "vad.reset failed: ${e.message}") }
 

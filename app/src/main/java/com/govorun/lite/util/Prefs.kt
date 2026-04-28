@@ -18,12 +18,30 @@ object Prefs {
     // Version-suffixed so each release with new feature highlights re-shows
     // the card to existing users (their dismissal of the previous version's
     // card doesn't carry over). Bump the suffix when the card content changes.
-    private const val KEY_WHATS_NEW_HINT_DISMISSED = "whats_new_hint_dismissed_v106"
+    private const val KEY_WHATS_NEW_HINT_DISMISSED = "whats_new_hint_dismissed_v107"
     private const val KEY_DICTIONARY = "dictionary_text"
     private const val KEY_DICTIONARY_ENABLED = "dictionary_enabled"
+    private const val KEY_PAUSE_LENGTH = "pause_length"
 
     const val BUBBLE_SIDE_RIGHT = "right"
     const val BUBBLE_SIDE_LEFT = "left"
+
+    // VAD silence threshold presets — how long the silence must last before
+    // the VAD considers the utterance finished. SHORT is the historic default
+    // and matches what 1.0.6 and earlier shipped with; existing users keep it.
+    // LONG gives "thinking pauses" room before the model commits a paragraph
+    // — this is what the RuStore feedback ("she pauses to think and the app
+    // cuts the sentence") asked for.
+    const val PAUSE_SHORT = "short"
+    const val PAUSE_MEDIUM = "medium"
+    const val PAUSE_LONG = "long"
+    const val PAUSE_DEFAULT = PAUSE_SHORT
+
+    // Seconds, fed verbatim into SileroVadModelConfig.minSilenceDuration.
+    // Doubling per step keeps the difference perceptually obvious.
+    const val PAUSE_SHORT_SECONDS = 0.5f
+    const val PAUSE_MEDIUM_SECONDS = 1.0f
+    const val PAUSE_LONG_SECONDS = 2.0f
 
     // Clamp range for the bubble fill alpha. The floor (0.4) keeps the
     // bubble visible enough that the bird silhouette is still recognisable
@@ -172,6 +190,31 @@ object Prefs {
             .edit()
             .putBoolean(KEY_DICTIONARY_ENABLED, enabled)
             .apply()
+    }
+
+    fun getPauseLength(context: Context): String {
+        val raw = context.getSharedPreferences(FILE_NAME, Context.MODE_PRIVATE)
+            .getString(KEY_PAUSE_LENGTH, PAUSE_DEFAULT) ?: PAUSE_DEFAULT
+        return when (raw) {
+            PAUSE_SHORT, PAUSE_MEDIUM, PAUSE_LONG -> raw
+            else -> PAUSE_DEFAULT
+        }
+    }
+
+    fun setPauseLength(context: Context, value: String) {
+        require(value == PAUSE_SHORT || value == PAUSE_MEDIUM || value == PAUSE_LONG) {
+            "Invalid pause length: $value"
+        }
+        context.getSharedPreferences(FILE_NAME, Context.MODE_PRIVATE)
+            .edit()
+            .putString(KEY_PAUSE_LENGTH, value)
+            .apply()
+    }
+
+    fun getPauseLengthSeconds(context: Context): Float = when (getPauseLength(context)) {
+        PAUSE_MEDIUM -> PAUSE_MEDIUM_SECONDS
+        PAUSE_LONG -> PAUSE_LONG_SECONDS
+        else -> PAUSE_SHORT_SECONDS
     }
 
     // Always land on a multiple of the slider step — M3 Slider throws if

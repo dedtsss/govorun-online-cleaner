@@ -106,6 +106,29 @@ class SettingsActivity : AppCompatActivity() {
         }
         hapticsRow.setOnClickListener { hapticsSwitch.toggle() }
 
+        // Pause length — VAD silence threshold preset. "Короткая" preselects
+        // for existing users (matches what shipped before 1.0.7); their
+        // experience is unchanged unless they actively switch.
+        val pauseGroup = findViewById<MaterialButtonToggleGroup>(R.id.pauseToggleGroup)
+        val pauseHint = findViewById<MaterialTextView>(R.id.pauseHint)
+        val initialPause = Prefs.getPauseLength(this)
+        pauseGroup.check(when (initialPause) {
+            Prefs.PAUSE_MEDIUM -> R.id.pauseMedium
+            Prefs.PAUSE_LONG -> R.id.pauseLong
+            else -> R.id.pauseShort
+        })
+        pauseHint.setText(hintForPause(initialPause))
+        pauseGroup.addOnButtonCheckedListener { _, checkedId, isChecked ->
+            if (!isChecked) return@addOnButtonCheckedListener
+            val value = when (checkedId) {
+                R.id.pauseMedium -> Prefs.PAUSE_MEDIUM
+                R.id.pauseLong -> Prefs.PAUSE_LONG
+                else -> Prefs.PAUSE_SHORT
+            }
+            Prefs.setPauseLength(this, value)
+            pauseHint.setText(hintForPause(value))
+        }
+
         findViewById<View>(R.id.dictionaryRow).setOnClickListener {
             startActivity(Intent(this, DictionaryActivity::class.java))
         }
@@ -131,6 +154,9 @@ class SettingsActivity : AppCompatActivity() {
             // switch update via setValue/isChecked (no fromUser flag → our
             // addOnChangeListener sees fromUser=false and skips the side-
             // effects), so we apply preview + overlay changes manually after.
+            // Dictionary text + enabled flag are NOT reset — wiping the user's
+            // hand-curated word list from a generic "Reset" button would be
+            // surprising; the dictionary screen has its own clear action.
             Prefs.setBubbleSize(this, Prefs.BUBBLE_SIZE_DEFAULT)
             Prefs.setBubbleAlpha(this, Prefs.BUBBLE_ALPHA_DEFAULT)
             Prefs.setHapticsEnabled(this, false)
@@ -139,11 +165,14 @@ class SettingsActivity : AppCompatActivity() {
             // the centre. A user who deliberately positioned it isn't going
             // to hit Reset; anyone who does expects everything reverted.
             Prefs.setBubbleY(this, 0)
+            Prefs.setPauseLength(this, Prefs.PAUSE_DEFAULT)
 
             sizeSlider.value = Prefs.BUBBLE_SIZE_DEFAULT
             transparencySlider.value = Prefs.BUBBLE_ALPHA_DEFAULT
             hapticsSwitch.isChecked = false
             sideGroup.check(R.id.sideRight)
+            pauseGroup.check(R.id.pauseShort)
+            pauseHint.setText(hintForPause(Prefs.PAUSE_DEFAULT))
 
             previewBubble.applySizeScaleFromPrefs()
             previewBubble.setIdleAlpha(Prefs.BUBBLE_ALPHA_DEFAULT)
@@ -167,6 +196,12 @@ class SettingsActivity : AppCompatActivity() {
      * Settings preview visually mirrors what the user picked. Uses the
      * BubbleView's layout_gravity within its parent.
      */
+    private fun hintForPause(value: String): Int = when (value) {
+        Prefs.PAUSE_MEDIUM -> R.string.settings_pause_hint_medium
+        Prefs.PAUSE_LONG -> R.string.settings_pause_hint_long
+        else -> R.string.settings_pause_hint_short
+    }
+
     private fun applyPreviewSide(previewBubble: BubbleView, side: String) {
         val lp = previewBubble.layoutParams as? android.widget.FrameLayout.LayoutParams ?: return
         val horizontal = if (side == Prefs.BUBBLE_SIDE_LEFT) android.view.Gravity.START
