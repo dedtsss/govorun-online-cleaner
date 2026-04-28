@@ -3,7 +3,7 @@
 # The AAR (47 MB, gitignored) ships the native ASR runtime used for GigaAM v3.
 set -euo pipefail
 
-VERSION="1.12.34"
+VERSION="1.13.0"
 URL="https://github.com/k2-fsa/sherpa-onnx/releases/download/v${VERSION}/sherpa-onnx-${VERSION}.aar"
 DEST_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/app/libs"
 DEST="${DEST_DIR}/sherpa-onnx.aar"
