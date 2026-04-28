@@ -18,10 +18,15 @@ object Prefs {
     // Version-suffixed so each release with new feature highlights re-shows
     // the card to existing users (their dismissal of the previous version's
     // card doesn't carry over). Bump the suffix when the card content changes.
-    private const val KEY_WHATS_NEW_HINT_DISMISSED = "whats_new_hint_dismissed_v107"
+    private const val KEY_WHATS_NEW_HINT_DISMISSED = "whats_new_hint_dismissed_v108"
     private const val KEY_DICTIONARY = "dictionary_text"
     private const val KEY_DICTIONARY_ENABLED = "dictionary_enabled"
     private const val KEY_PAUSE_LENGTH = "pause_length"
+    // One-shot flag: marks that we've already run the 1.0.8 migration that
+    // bumps existing users from Short → Medium. Without this we'd reset
+    // the pref on every cold start, which would override the user's
+    // post-migration choice if they switched back to Short on purpose.
+    private const val KEY_V108_PAUSE_MIGRATED = "v108_pause_migrated"
 
     const val BUBBLE_SIDE_RIGHT = "right"
     const val BUBBLE_SIDE_LEFT = "left"
@@ -215,6 +220,27 @@ object Prefs {
         PAUSE_MEDIUM -> PAUSE_MEDIUM_SECONDS
         PAUSE_LONG -> PAUSE_LONG_SECONDS
         else -> PAUSE_SHORT_SECONDS
+    }
+
+    /**
+     * One-time migration when a user first launches 1.0.8. Bumps Short →
+     * Medium because 0.5s was too aggressive for many users (multiple
+     * complaints about sentences getting cut mid-thought). We treat Short
+     * as "kept the default" since it WAS the default in 1.0.7 — anyone
+     * who wanted faster reaction will switch back, and they get a clear
+     * note in "What's new" telling them how. Long is not touched — that's
+     * an explicit choice and we honour it.
+     *
+     * Idempotent via [KEY_V108_PAUSE_MIGRATED] — runs once per install
+     * lifetime, even across cold starts and process restarts.
+     */
+    fun migrateTo108PauseDefault(context: Context) {
+        val prefs = context.getSharedPreferences(FILE_NAME, Context.MODE_PRIVATE)
+        if (prefs.getBoolean(KEY_V108_PAUSE_MIGRATED, false)) return
+        if (getPauseLength(context) == PAUSE_SHORT) {
+            setPauseLength(context, PAUSE_MEDIUM)
+        }
+        prefs.edit().putBoolean(KEY_V108_PAUSE_MIGRATED, true).apply()
     }
 
     // Always land on a multiple of the slider step — M3 Slider throws if

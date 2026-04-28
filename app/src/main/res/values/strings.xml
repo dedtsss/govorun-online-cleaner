@@ -93,9 +93,11 @@
          doesn't compete with action items. Disappears for good after the
          user taps "Понятно". -->
     <string name="main_card_whats_new_title">Что нового</string>
-    <string name="main_card_whats_new_subhead_settings">В настройках:</string>
+    <string name="main_card_whats_new_subhead_settings">В Настройках:</string>
+    <string name="main_card_whats_new_subhead_tile">В шторке Android:</string>
     <string name="main_card_whats_new_subhead_mode">Новый режим:</string>
-    <string name="main_card_whats_new_line1">• Длина паузы — Говорун подстраивается под ваш темп речи</string>
+    <string name="main_card_whats_new_tile_line">• Можно добавить плитку «Говорун» — быстро скрывать и показывать птичку</string>
+    <string name="main_card_whats_new_line1">• Длина паузы — теперь по умолчанию Средняя. Если нужна быстрая реакция, верните Короткую в Настройках</string>
     <string name="main_card_whats_new_line2">• Свой словарь автозамен — для терминов, имён, аббревиатур</string>
     <string name="main_card_whats_new_line3">• Размер, прозрачность и расположение птички</string>
     <string name="main_card_whats_new_line4">• Удерживайте птичку для записи длинной фразы — отпустите, отправит текст</string>

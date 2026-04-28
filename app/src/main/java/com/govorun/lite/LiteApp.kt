@@ -4,12 +4,21 @@ import android.app.Application
 import com.google.android.material.color.DynamicColors
 import com.govorun.lite.model.GigaAmModel
 import com.govorun.lite.util.AppLog
+import com.govorun.lite.util.Prefs
 import kotlin.concurrent.thread
 
 class LiteApp : Application() {
     override fun onCreate() {
         super.onCreate()
         DynamicColors.applyToActivitiesIfAvailable(this)
+
+        // One-time migration on the first launch of 1.0.8: bump the pause
+        // preset from "Short" (the silent default through 1.0.7) up to
+        // "Medium". Multiple users complained that 0.5s was too aggressive
+        // and cut sentences mid-thought; Medium gives a noticeably more
+        // comfortable rhythm without surprising the niche who deliberately
+        // chose Long. We don't touch users on Long — their explicit choice.
+        Prefs.migrateTo108PauseDefault(this)
 
         // Extract the bundled GigaAM model from APK assets to filesDir on a
         // background thread. sherpa-onnx needs filesystem paths; assets are
