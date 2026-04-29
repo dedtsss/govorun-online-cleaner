@@ -217,7 +217,7 @@ class SettingsActivity : AppCompatActivity() {
             tag = AI_CLEANER_ROW_TAG
             orientation = LinearLayout.HORIZONTAL
             gravity = android.view.Gravity.CENTER_VERTICAL
-            minHeight = dp(72)
+            minimumHeight = dp(72)
             setPadding(dp(16), dp(12), dp(16), dp(12))
             setBackgroundResource(selectable.resourceId)
             isClickable = true
