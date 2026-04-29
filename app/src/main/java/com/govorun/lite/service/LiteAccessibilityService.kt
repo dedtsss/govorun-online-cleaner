@@ -12,6 +12,7 @@ import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.graphics.PixelFormat
 import android.os.SystemClock
+import android.widget.Toast
 import android.view.HapticFeedbackConstants
 import android.util.Log
 import android.view.Gravity
@@ -20,6 +21,7 @@ import android.view.View
 import android.view.WindowManager
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityWindowInfo
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.view.ContextThemeWrapper
 import androidx.core.content.ContextCompat
 import com.google.android.material.color.DynamicColors
@@ -32,6 +34,8 @@ import com.govorun.lite.transcriber.OfflineTranscriber
 import com.govorun.lite.transcriber.VadRecorder
 import com.govorun.lite.ui.MainActivity
 import com.govorun.lite.util.AppLog
+import com.govorun.lite.util.AiCleanerPrefs
+import com.govorun.lite.util.GigaChatClient
 import com.govorun.lite.util.Haptics
 import com.govorun.lite.util.Prefs
 import kotlinx.coroutines.CoroutineScope
@@ -239,6 +243,80 @@ class LiteAccessibilityService : AccessibilityService() {
         StatsStore.addWords(this, StatsStore.countWords(replaced))
     }
 
+    private fun onRecognizedSegment(text: String) {
+        if (text.isBlank()) return
+        val replaced = Dictionary.applyReplacements(this, text)
+        val shouldOfferAi = AiCleanerPrefs.isEnabled(this)
+        scope.launch(Dispatchers.Main) {
+            showRecognitionDialog(
+                sourceText = replaced,
+                initialCleanedText = null,
+                allowAi = shouldOfferAi
+            )
+        }
+    }
+
+    private fun showRecognitionDialog(sourceText: String, initialCleanedText: String?, allowAi: Boolean) {
+        var cleanedText = initialCleanedText
+        val message = buildString {
+            append("Исходный текст:\n")
+            append(sourceText)
+            if (!cleanedText.isNullOrBlank()) {
+                append("\n\nИсправленный текст:\n")
+                append(cleanedText)
+            }
+        }
+        val dialog = AlertDialog.Builder(bubbleContext())
+            .setTitle("Распознан текст")
+            .setMessage(message)
+            .setNegativeButton("Вставить исходный") { d, _ ->
+                pasteText(sourceText)
+                d.dismiss()
+            }
+            .setPositiveButton(
+                if (cleanedText.isNullOrBlank()) "Закрыть" else "Вставить исправленный"
+            ) { d, _ ->
+                if (!cleanedText.isNullOrBlank()) pasteText(cleanedText.orEmpty())
+                d.dismiss()
+            }
+            .create()
+        dialog.window?.setType(WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY)
+        if (allowAi) {
+            dialog.setButton(AlertDialog.BUTTON_NEUTRAL, "Очистить AI") { d, _ ->
+                d.dismiss()
+                runAiCleanup(sourceText)
+            }
+        }
+        dialog.show()
+    }
+
+    private fun runAiCleanup(sourceText: String) {
+        scope.launch(Dispatchers.IO) {
+            try {
+                val cleaned = GigaChatClient(this@LiteAccessibilityService).cleanupText(sourceText)
+                scope.launch(Dispatchers.Main) {
+                    showRecognitionDialog(sourceText, cleaned, allowAi = true)
+                }
+            } catch (e: GigaChatClient.Error.MissingAuthorizationKey) {
+                showToastOnMain("Добавьте Authorization Key в настройках AI-очистки")
+            } catch (e: GigaChatClient.Error.Network) {
+                showToastOnMain("Нет сети или не удалось подключиться к GigaChat")
+            } catch (e: GigaChatClient.Error.EmptyResponse) {
+                showToastOnMain("GigaChat вернул пустой ответ")
+            } catch (e: GigaChatClient.Error.Api) {
+                showToastOnMain(e.message ?: "Ошибка GigaChat API")
+            } catch (e: Exception) {
+                showToastOnMain("Ошибка AI-очистки: ${e.message}")
+            }
+        }
+    }
+
+    private fun showToastOnMain(text: String) {
+        scope.launch(Dispatchers.Main) {
+            Toast.makeText(this@LiteAccessibilityService, text, Toast.LENGTH_LONG).show()
+        }
+    }
+
     private fun prependSpaceIfNeeded(
         text: String,
         connection: InputMethod.AccessibilityInputConnection
@@ -288,7 +366,7 @@ class LiteAccessibilityService : AccessibilityService() {
         recorder.start(
             scope = scope,
             transcriberProvider = { OfflineTranscriber.getInstance(this@LiteAccessibilityService) },
-            onSegment = { text -> pasteText(text) },
+            onSegment = { text -> onRecognizedSegment(text) },
             useVad = useVad,
         )
         Log.i(TAG, "VAD recording started")
