@@ -3,7 +3,9 @@ package com.govorun.lite.ui
 import android.content.DialogInterface
 import android.content.Intent
 import android.os.Bundle
+import android.util.TypedValue
 import android.view.View
+import android.widget.LinearLayout
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
@@ -132,6 +134,7 @@ class SettingsActivity : AppCompatActivity() {
         findViewById<View>(R.id.dictionaryRow).setOnClickListener {
             startActivity(Intent(this, DictionaryActivity::class.java))
         }
+        addAiCleanerSettingsRow()
 
         showServiceRow = findViewById(R.id.showServiceRow)
         showServiceSwitch = findViewById(R.id.showServiceSwitch)
@@ -202,6 +205,46 @@ class SettingsActivity : AppCompatActivity() {
         else -> R.string.settings_pause_hint_short
     }
 
+    private fun addAiCleanerSettingsRow() {
+        val dictionaryRow = findViewById<View>(R.id.dictionaryRow)
+        val parent = dictionaryRow.parent as? LinearLayout ?: return
+        if (parent.findViewWithTag<View>(AI_CLEANER_ROW_TAG) != null) return
+
+        val selectable = TypedValue()
+        theme.resolveAttribute(android.R.attr.selectableItemBackground, selectable, true)
+
+        val row = LinearLayout(this).apply {
+            tag = AI_CLEANER_ROW_TAG
+            orientation = LinearLayout.HORIZONTAL
+            gravity = android.view.Gravity.CENTER_VERTICAL
+            minHeight = dp(72)
+            setPadding(dp(16), dp(12), dp(16), dp(12))
+            setBackgroundResource(selectable.resourceId)
+            isClickable = true
+            isFocusable = true
+            setOnClickListener {
+                startActivity(Intent(this@SettingsActivity, AiCleanerSettingsActivity::class.java))
+            }
+        }
+
+        val texts = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+        }
+        texts.addView(MaterialTextView(this).apply {
+            text = "AI-очистка"
+            textAppearance = com.google.android.material.R.style.TextAppearance_Material3_TitleMedium
+        })
+        texts.addView(MaterialTextView(this).apply {
+            text = "Онлайн-правка распознанного текста через GigaChat"
+            textAppearance = com.google.android.material.R.style.TextAppearance_Material3_BodyMedium
+            setTextColor(MaterialColors.getColor(this, com.google.android.material.R.attr.colorOnSurfaceVariant))
+        })
+        row.addView(texts, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+
+        val insertIndex = parent.indexOfChild(dictionaryRow) + 1
+        parent.addView(row, insertIndex)
+    }
+
     private fun applyPreviewSide(previewBubble: BubbleView, side: String) {
         val lp = previewBubble.layoutParams as? android.widget.FrameLayout.LayoutParams ?: return
         val horizontal = if (side == Prefs.BUBBLE_SIDE_LEFT) android.view.Gravity.START
@@ -257,5 +300,11 @@ class SettingsActivity : AppCompatActivity() {
             }
             .setNegativeButton(android.R.string.cancel, null)
             .show()
+    }
+
+    private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
+
+    companion object {
+        private const val AI_CLEANER_ROW_TAG = "ai_cleaner_settings_row"
     }
 }
