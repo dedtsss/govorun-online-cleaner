@@ -232,11 +232,11 @@ class SettingsActivity : AppCompatActivity() {
         }
         texts.addView(MaterialTextView(this).apply {
             text = "AI-очистка"
-            textAppearance = com.google.android.material.R.style.TextAppearance_Material3_TitleMedium
+            setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_TitleMedium)
         })
         texts.addView(MaterialTextView(this).apply {
             text = "Онлайн-правка распознанного текста через GigaChat"
-            textAppearance = com.google.android.material.R.style.TextAppearance_Material3_BodyMedium
+            setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_BodyMedium)
             setTextColor(MaterialColors.getColor(this, com.google.android.material.R.attr.colorOnSurfaceVariant))
         })
         row.addView(texts, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
