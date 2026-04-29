@@ -12,6 +12,7 @@ import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.graphics.PixelFormat
 import android.os.SystemClock
+import android.widget.Toast
 import android.view.HapticFeedbackConstants
 import android.util.Log
 import android.view.Gravity
@@ -20,6 +21,7 @@ import android.view.View
 import android.view.WindowManager
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityWindowInfo
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.view.ContextThemeWrapper
 import androidx.core.content.ContextCompat
 import com.google.android.material.color.DynamicColors
@@ -32,6 +34,8 @@ import com.govorun.lite.transcriber.OfflineTranscriber
 import com.govorun.lite.transcriber.VadRecorder
 import com.govorun.lite.ui.MainActivity
 import com.govorun.lite.util.AppLog
+import com.govorun.lite.util.AiCleanerPrefs
+import com.govorun.lite.util.GigaChatClient
 import com.govorun.lite.util.Haptics
 import com.govorun.lite.util.Prefs
 import kotlinx.coroutines.CoroutineScope
@@ -220,23 +224,105 @@ class LiteAccessibilityService : AccessibilityService() {
 
     private fun pasteText(text: String) {
         if (text.isBlank()) return
-        // Apply user dictionary BEFORE commitText. This is a lexical
-        // post-pass — fixing jargon, abbreviations, proper-noun spellings
-        // the recogniser doesn't know. Empty dictionary returns the text
-        // unchanged, so this costs nothing for users who don't set one up.
         val replaced = Dictionary.applyReplacements(this, text)
-        if (replaced != text) {
-            AppLog.log(this, "Dictionary applied: '${text.take(40)}' → '${replaced.take(40)}'")
+        commitPreparedText(replaced, originalForLog = text)
+    }
+
+    private fun commitPreparedText(text: String, originalForLog: String? = null) {
+        if (text.isBlank()) return
+        if (originalForLog != null && originalForLog != text) {
+            AppLog.log(this, "Dictionary applied: '${originalForLog.take(40)}' → '${text.take(40)}'")
         }
         val connection = accessibilityInputMethod?.currentInputConnection
         if (connection == null) {
-            AppLog.log(this, "Paste: InputConnection=null — dropping '${replaced.take(40)}'")
+            AppLog.log(this, "Paste: InputConnection=null — dropping '${text.take(40)}'")
             return
         }
-        val spacedText = prependSpaceIfNeeded(replaced, connection)
+        val spacedText = prependSpaceIfNeeded(text, connection)
         connection.commitText(spacedText, 1, null)
         AppLog.log(this, "Paste: commitText len=${spacedText.length}")
-        StatsStore.addWords(this, StatsStore.countWords(replaced))
+        StatsStore.addWords(this, StatsStore.countWords(text))
+    }
+
+    private fun onRecognizedSegment(text: String) {
+        if (text.isBlank()) return
+        val replaced = Dictionary.applyReplacements(this, text)
+        if (!AiCleanerPrefs.isEnabled(this)) {
+            commitPreparedText(replaced, originalForLog = text)
+            return
+        }
+        scope.launch(Dispatchers.Main) {
+            showSourceDialog(replaced)
+        }
+    }
+
+    private fun showSourceDialog(sourceText: String) {
+        val dialog = AlertDialog.Builder(bubbleContext())
+            .setTitle("Распознан текст")
+            .setMessage("Исходный текст:\n$sourceText")
+            .setNegativeButton("Вставить исходный") { d, _ ->
+                commitPreparedText(sourceText)
+                d.dismiss()
+            }
+            .setPositiveButton("Закрыть") { d, _ ->
+                d.dismiss()
+            }
+            .create()
+        dialog.window?.setType(WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY)
+        dialog.setButton(AlertDialog.BUTTON_NEUTRAL, "Очистить AI") { d, _ ->
+            d.dismiss()
+            runAiCleanup(sourceText)
+        }
+        dialog.show()
+    }
+
+    private fun showCleanedDialog(sourceText: String, cleanedText: String) {
+        val dialog = AlertDialog.Builder(bubbleContext())
+            .setTitle("AI-очистка")
+            .setMessage("Исправленный текст:\n$cleanedText")
+            .setNegativeButton("Вставить исходный") { d, _ ->
+                commitPreparedText(sourceText)
+                d.dismiss()
+            }
+            .setPositiveButton("Вставить исправленный") { d, _ ->
+                commitPreparedText(cleanedText)
+                d.dismiss()
+            }
+            .setNeutralButton("Закрыть") { d, _ -> d.dismiss() }
+            .create()
+        dialog.window?.setType(WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY)
+        dialog.show()
+    }
+
+    private fun runAiCleanup(sourceText: String) {
+        scope.launch(Dispatchers.IO) {
+            try {
+                val cleaned = GigaChatClient(this@LiteAccessibilityService).cleanupText(sourceText)
+                scope.launch(Dispatchers.Main) {
+                    showCleanedDialog(sourceText, cleaned)
+                }
+            } catch (e: GigaChatClient.Error.MissingAuthorizationKey) {
+                showToastOnMain("Добавьте Authorization Key в настройках AI-очистки")
+            } catch (e: GigaChatClient.Error.TooLongInput) {
+                showToastOnMain("Текст слишком длинный для AI-очистки (лимит 6000 символов)")
+            } catch (e: GigaChatClient.Error.Network) {
+                showToastOnMain("Нет сети или не удалось подключиться к GigaChat")
+            } catch (e: GigaChatClient.Error.EmptyResponse) {
+                showToastOnMain("GigaChat вернул пустой ответ")
+            } catch (e: GigaChatClient.Error.RateLimited) {
+                showToastOnMain("Лимит запросов GigaChat, попробуйте позже")
+            } catch (e: GigaChatClient.Error.Api) {
+                showToastOnMain(e.message ?: "Ошибка GigaChat API")
+            } catch (e: Exception) {
+                showToastOnMain("Ошибка AI-очистки: ${e.message}")
+            }
+        }
+    }
+
+    private fun showToastOnMain(text: String) {
+        scope.launch(Dispatchers.Main) {
+            Toast.makeText(this@LiteAccessibilityService, text, Toast.LENGTH_LONG).show()
+        }
     }
 
     private fun prependSpaceIfNeeded(
@@ -288,7 +374,7 @@ class LiteAccessibilityService : AccessibilityService() {
         recorder.start(
             scope = scope,
             transcriberProvider = { OfflineTranscriber.getInstance(this@LiteAccessibilityService) },
-            onSegment = { text -> pasteText(text) },
+            onSegment = { text -> onRecognizedSegment(text) },
             useVad = useVad,
         )
         Log.i(TAG, "VAD recording started")
