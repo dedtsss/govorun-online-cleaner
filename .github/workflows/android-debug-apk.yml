@@ -1,0 +1,44 @@
+name: Android Debug APK
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build-debug:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Make scripts executable
+        run: |
+          chmod +x ./gradlew
+          chmod +x ./scripts/*.sh
+
+      - name: Download sherpa-onnx runtime
+        run: ./scripts/download-sherpa-onnx.sh
+
+      - name: Download GigaAM model
+        run: ./scripts/download-model.sh
+
+      - name: Build debug APK
+        run: ./gradlew assembleDebug --no-daemon
+
+      - name: Upload debug APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: govorun-debug-apk
+          path: app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
