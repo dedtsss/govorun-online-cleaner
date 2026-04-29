@@ -15,15 +15,18 @@ val keystoreProps = Properties().apply {
 }
 
 android {
+    // Keep the original source namespace to avoid a large package refactor.
+    // applicationId below is changed so this fork installs side-by-side with
+    // the upstream Govorun app instead of replacing it.
     namespace = "com.govorun.lite"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.govorun.lite"
+        applicationId = "com.govorun.onlinecleaner"
         minSdk = 33
         targetSdk = 35
-        versionCode = 10
-        versionName = "1.0.8"
+        versionCode = 1
+        versionName = "0.1.0"
         ndk {
             abiFilters += "arm64-v8a"
         }
