@@ -25,6 +25,19 @@ check_hash() {
   [[ "${actual}" == "${expected}" ]]
 }
 
+download_with_retry() {
+  local url="$1" dest="$2"
+  curl -fL \
+    --retry 8 \
+    --retry-delay 10 \
+    --retry-max-time 600 \
+    --retry-all-errors \
+    --connect-timeout 30 \
+    --progress-bar \
+    -o "${dest}" \
+    "${url}"
+}
+
 for filename in "${!SHA256[@]}"; do
   dest="${DEST_DIR}/${filename}"
   expected="${SHA256[${filename}]}"
@@ -35,7 +48,7 @@ for filename in "${!SHA256[@]}"; do
   fi
 
   echo "Fetch  ${filename}"
-  curl -fL --progress-bar -o "${dest}" "${BASE_URL}/${filename}"
+  download_with_retry "${BASE_URL}/${filename}" "${dest}"
 
   if ! check_hash "${dest}" "${expected}"; then
     actual="$(sha256sum "${dest}" | awk '{print $1}')"
