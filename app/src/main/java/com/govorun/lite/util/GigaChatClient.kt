@@ -16,6 +16,7 @@ class GigaChatClient(private val context: Context) {
 
         @Volatile private var cachedToken: String? = null
         @Volatile private var cachedTokenExpiryMs: Long = 0L
+        @Volatile private var cachedTokenAuthKey: String? = null
     }
 
     sealed class Error(message: String) : Exception(message) {
@@ -82,27 +83,40 @@ class GigaChatClient(private val context: Context) {
     private fun getAccessToken(authKey: String): String {
         val now = System.currentTimeMillis()
         val token = cachedToken
-        if (!token.isNullOrBlank() && now + TOKEN_RENEW_SKEW_MS < cachedTokenExpiryMs) {
+        if (
+            !token.isNullOrBlank() &&
+            cachedTokenAuthKey == authKey &&
+            now + TOKEN_RENEW_SKEW_MS < cachedTokenExpiryMs
+        ) {
             return token
+        }
+        if (cachedTokenAuthKey != authKey) {
+            clearCachedToken()
         }
         return requestAccessToken(authKey)
     }
 
     private fun requestAccessToken(authKey: String): String {
-        val responseJson = postForm(
-            url = "https://ngw.devices.sberbank.ru:9443/api/v2/oauth",
-            headers = mapOf(
-                "Authorization" to "Basic $authKey",
-                "RqUID" to UUID.randomUUID().toString()
-            ),
-            formBody = "scope=GIGACHAT_API_PERS"
-        )
+        val responseJson = try {
+            postForm(
+                url = "https://ngw.devices.sberbank.ru:9443/api/v2/oauth",
+                headers = mapOf(
+                    "Authorization" to "Basic $authKey",
+                    "RqUID" to UUID.randomUUID().toString()
+                ),
+                formBody = "scope=GIGACHAT_API_PERS"
+            )
+        } catch (_: UnauthorizedException) {
+            clearCachedToken()
+            throw Error.Api("Сохраненный Authorization Key GigaChat недействителен или отозван")
+        }
 
         val token = responseJson.optString("access_token").trim()
         if (token.isBlank()) throw Error.Api("OAuth не вернул access_token")
         val expiresAtMs = parseTokenExpiryMs(responseJson)
         cachedToken = token
         cachedTokenExpiryMs = expiresAtMs
+        cachedTokenAuthKey = authKey
         return token
     }
 
@@ -120,6 +134,7 @@ class GigaChatClient(private val context: Context) {
     private fun clearCachedToken() {
         cachedToken = null
         cachedTokenExpiryMs = 0L
+        cachedTokenAuthKey = null
     }
 
     private fun postForm(url: String, headers: Map<String, String>, formBody: String): JSONObject {
