@@ -7,7 +7,6 @@ import android.view.View
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.Toast
-import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import com.google.android.material.appbar.MaterialToolbar
 import com.google.android.material.button.MaterialButton
@@ -32,7 +31,6 @@ class AiCleanerSettingsActivity : AppCompatActivity() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        enableEdgeToEdge()
         DynamicColors.applyToActivityIfAvailable(this)
         super.onCreate(savedInstanceState)
 
@@ -95,7 +93,6 @@ class AiCleanerSettingsActivity : AppCompatActivity() {
 
         apiKeyEdit = TextInputEditText(this).apply {
             setText(AiCleanerPrefs.getAuthorizationKey(this@AiCleanerSettingsActivity))
-            hint = "Authorization Key"
             inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
             setSingleLine(true)
         }
