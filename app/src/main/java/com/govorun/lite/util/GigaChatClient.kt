@@ -5,8 +5,10 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.io.IOException
 import java.net.HttpURLConnection
+import java.net.SocketTimeoutException
 import java.net.URL
 import java.util.UUID
+import javax.net.ssl.SSLException
 
 class GigaChatClient(private val context: Context) {
     companion object {
@@ -23,7 +25,11 @@ class GigaChatClient(private val context: Context) {
         object MissingAuthorizationKey : Error("Не задан Authorization Key")
         object InputTooLong : Error("Текст слишком длинный для AI-очистки (максимум 6000 символов)")
         object EmptyResponse : Error("Пустой ответ от AI")
+        object Unauthorized : Error("Authorization Key недействителен, отозван или не подходит для GigaChat")
         object RateLimited : Error("Превышен лимит запросов GigaChat (HTTP 429)")
+        object Tls : Error("TLS/SSL ошибка при подключении к GigaChat")
+        object Timeout : Error("Таймаут при подключении к GigaChat")
+        object ServerUnavailable : Error("GigaChat временно недоступен (HTTP 500/502/503/504)")
         class Api(message: String) : Error(message)
         class Network(cause: IOException) : Error(cause.message ?: "Ошибка сети")
     }
@@ -63,6 +69,13 @@ class GigaChatClient(private val context: Context) {
             val retryToken = getAccessToken(authKey)
             postCompletion(retryToken, prompt, model, input)
         }
+    }
+
+    fun checkConnection(): String {
+        val testInput = "привет как дела"
+        val cleaned = cleanupText(testInput)
+        if (cleaned.isBlank()) throw Error.EmptyResponse
+        return cleaned
     }
 
     private fun postCompletion(token: String, prompt: String, model: String, input: String): JSONObject {
@@ -108,7 +121,7 @@ class GigaChatClient(private val context: Context) {
             )
         } catch (_: UnauthorizedException) {
             clearCachedToken()
-            throw Error.Api("Сохраненный Authorization Key GigaChat недействителен или отозван")
+            throw Error.Unauthorized
         }
 
         val token = responseJson.optString("access_token").trim()
@@ -168,9 +181,14 @@ class GigaChatClient(private val context: Context) {
             if (code !in 200..299) {
                 if (code == 401) throw UnauthorizedException()
                 if (code == 429) throw Error.RateLimited
+                if (code in setOf(500, 502, 503, 504)) throw Error.ServerUnavailable
                 throw Error.Api("API ошибка ($code): ${raw.take(200)}")
             }
             return JSONObject(raw)
+        } catch (e: SSLException) {
+            throw Error.Tls
+        } catch (e: SocketTimeoutException) {
+            throw Error.Timeout
         } catch (e: IOException) {
             throw Error.Network(e)
         } finally {
