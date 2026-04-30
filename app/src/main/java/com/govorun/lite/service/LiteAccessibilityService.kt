@@ -12,7 +12,6 @@ import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.graphics.PixelFormat
 import android.os.SystemClock
-import android.widget.Toast
 import android.view.HapticFeedbackConstants
 import android.util.Log
 import android.view.Gravity
@@ -261,7 +260,12 @@ class LiteAccessibilityService : AccessibilityService() {
         }
     }
 
-    private fun showRecognitionDialog(sourceText: String, initialCleanedText: String?, allowAi: Boolean) {
+    private fun showRecognitionDialog(
+        sourceText: String,
+        initialCleanedText: String?,
+        allowAi: Boolean,
+        aiError: String? = null
+    ) {
         var cleanedText = initialCleanedText
         val message = buildString {
             append("Исходный текст:\n")
@@ -269,6 +273,10 @@ class LiteAccessibilityService : AccessibilityService() {
             if (!cleanedText.isNullOrBlank()) {
                 append("\n\nИсправленный текст:\n")
                 append(cleanedText)
+            }
+            if (!aiError.isNullOrBlank()) {
+                append("\n\nОшибка AI-очистки:\n")
+                append(aiError)
             }
         }
         val dialog = AlertDialog.Builder(bubbleContext())
@@ -286,6 +294,8 @@ class LiteAccessibilityService : AccessibilityService() {
             }
             .create()
         dialog.window?.setType(WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY)
+        dialog.setCanceledOnTouchOutside(false)
+        dialog.setCancelable(false)
         if (allowAi) {
             dialog.setButton(AlertDialog.BUTTON_NEUTRAL, "Очистить AI") { d, _ ->
                 d.dismiss()
@@ -298,44 +308,44 @@ class LiteAccessibilityService : AccessibilityService() {
     private fun runAiCleanup(sourceText: String) {
         scope.launch(Dispatchers.IO) {
             try {
+                AppLog.log(this@LiteAccessibilityService, "AI cleanup: start")
                 val cleaned = GigaChatClient(this@LiteAccessibilityService).cleanupText(sourceText)
+                AppLog.log(this@LiteAccessibilityService, "AI cleanup: success")
                 scope.launch(Dispatchers.Main) {
                     showRecognitionDialog(sourceText, cleaned, allowAi = true)
                 }
             } catch (e: GigaChatClient.Error.MissingAuthorizationKey) {
-                showToastOnMain("Добавьте Authorization Key в настройках AI-очистки")
-                showSourceDialogAfterAiFailure(sourceText)
+                showSourceDialogAfterAiFailure(sourceText, "Не указан Authorization Key. Добавьте его в настройках AI-очистки.")
+            } catch (e: GigaChatClient.Error.Unauthorized) {
+                showSourceDialogAfterAiFailure(sourceText, "Неверный или отозванный Authorization Key. Проверьте ключ в настройках.")
+            } catch (e: GigaChatClient.Error.Tls) {
+                showSourceDialogAfterAiFailure(sourceText, "TLS/SSL ошибка подключения к GigaChat. Проверьте сертификаты, VPN и дату/время на устройстве.")
+            } catch (e: GigaChatClient.Error.Timeout) {
+                showSourceDialogAfterAiFailure(sourceText, "Таймаут подключения к GigaChat. Проверьте интернет и попробуйте ещё раз.")
+            } catch (e: GigaChatClient.Error.ServerUnavailable) {
+                showSourceDialogAfterAiFailure(sourceText, "GigaChat временно недоступен (HTTP 500/502/503/504). Попробуйте позже.")
             } catch (e: GigaChatClient.Error.Network) {
-                showToastOnMain("Нет сети или не удалось подключиться к GigaChat")
-                showSourceDialogAfterAiFailure(sourceText)
+                showSourceDialogAfterAiFailure(sourceText, "Нет сети или не удалось подключиться к GigaChat.")
             } catch (e: GigaChatClient.Error.EmptyResponse) {
-                showToastOnMain("GigaChat вернул пустой ответ")
-                showSourceDialogAfterAiFailure(sourceText)
+                showSourceDialogAfterAiFailure(sourceText, "GigaChat вернул пустой ответ.")
             } catch (e: GigaChatClient.Error.InputTooLong) {
-                showToastOnMain(e.message ?: "Слишком длинный текст для AI-очистки")
-                showSourceDialogAfterAiFailure(sourceText)
+                showSourceDialogAfterAiFailure(sourceText, e.message ?: "Слишком длинный текст для AI-очистки.")
             } catch (e: GigaChatClient.Error.RateLimited) {
-                showToastOnMain("Слишком много запросов к GigaChat, попробуйте позже")
-                showSourceDialogAfterAiFailure(sourceText)
+                showSourceDialogAfterAiFailure(sourceText, "Слишком много запросов к GigaChat (HTTP 429). Попробуйте позже.")
             } catch (e: GigaChatClient.Error.Api) {
-                showToastOnMain(e.message ?: "Ошибка GigaChat API")
-                showSourceDialogAfterAiFailure(sourceText)
+                showSourceDialogAfterAiFailure(sourceText, e.message ?: "Ошибка GigaChat API.")
             } catch (e: Exception) {
-                showToastOnMain("Ошибка AI-очистки: ${e.message}")
-                showSourceDialogAfterAiFailure(sourceText)
+                showSourceDialogAfterAiFailure(sourceText, "Неожиданная ошибка AI-очистки: ${e.message}")
+            } finally {
+                AppLog.log(this@LiteAccessibilityService, "AI cleanup: final")
             }
         }
     }
 
-    private fun showSourceDialogAfterAiFailure(sourceText: String) {
+    private fun showSourceDialogAfterAiFailure(sourceText: String, aiError: String) {
+        AppLog.log(this@LiteAccessibilityService, "AI cleanup error: $aiError")
         scope.launch(Dispatchers.Main) {
-            showRecognitionDialog(sourceText, null, allowAi = true)
-        }
-    }
-
-    private fun showToastOnMain(text: String) {
-        scope.launch(Dispatchers.Main) {
-            Toast.makeText(this@LiteAccessibilityService, text, Toast.LENGTH_LONG).show()
+            showRecognitionDialog(sourceText, null, allowAi = true, aiError = aiError)
         }
     }
 
