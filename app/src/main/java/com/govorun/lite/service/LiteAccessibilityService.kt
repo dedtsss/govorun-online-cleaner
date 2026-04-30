@@ -224,29 +224,34 @@ class LiteAccessibilityService : AccessibilityService() {
 
     private fun pasteText(text: String) {
         if (text.isBlank()) return
-        // Apply user dictionary BEFORE commitText. This is a lexical
-        // post-pass — fixing jargon, abbreviations, proper-noun spellings
-        // the recogniser doesn't know. Empty dictionary returns the text
-        // unchanged, so this costs nothing for users who don't set one up.
         val replaced = Dictionary.applyReplacements(this, text)
         if (replaced != text) {
             AppLog.log(this, "Dictionary applied: '${text.take(40)}' → '${replaced.take(40)}'")
         }
+        commitPreparedText(replaced)
+    }
+
+    private fun commitPreparedText(text: String) {
+        if (text.isBlank()) return
         val connection = accessibilityInputMethod?.currentInputConnection
         if (connection == null) {
-            AppLog.log(this, "Paste: InputConnection=null — dropping '${replaced.take(40)}'")
+            AppLog.log(this, "Paste: InputConnection=null — dropping '${text.take(40)}'")
             return
         }
-        val spacedText = prependSpaceIfNeeded(replaced, connection)
+        val spacedText = prependSpaceIfNeeded(text, connection)
         connection.commitText(spacedText, 1, null)
         AppLog.log(this, "Paste: commitText len=${spacedText.length}")
-        StatsStore.addWords(this, StatsStore.countWords(replaced))
+        StatsStore.addWords(this, StatsStore.countWords(text))
     }
 
     private fun onRecognizedSegment(text: String) {
         if (text.isBlank()) return
         val replaced = Dictionary.applyReplacements(this, text)
         val shouldOfferAi = AiCleanerPrefs.isEnabled(this)
+        if (!shouldOfferAi) {
+            commitPreparedText(replaced)
+            return
+        }
         scope.launch(Dispatchers.Main) {
             showRecognitionDialog(
                 sourceText = replaced,
@@ -270,13 +275,13 @@ class LiteAccessibilityService : AccessibilityService() {
             .setTitle("Распознан текст")
             .setMessage(message)
             .setNegativeButton("Вставить исходный") { d, _ ->
-                pasteText(sourceText)
+                commitPreparedText(sourceText)
                 d.dismiss()
             }
             .setPositiveButton(
                 if (cleanedText.isNullOrBlank()) "Закрыть" else "Вставить исправленный"
             ) { d, _ ->
-                if (!cleanedText.isNullOrBlank()) pasteText(cleanedText.orEmpty())
+                if (!cleanedText.isNullOrBlank()) commitPreparedText(cleanedText.orEmpty())
                 d.dismiss()
             }
             .create()
@@ -299,15 +304,32 @@ class LiteAccessibilityService : AccessibilityService() {
                 }
             } catch (e: GigaChatClient.Error.MissingAuthorizationKey) {
                 showToastOnMain("Добавьте Authorization Key в настройках AI-очистки")
+                showSourceDialogAfterAiFailure(sourceText)
             } catch (e: GigaChatClient.Error.Network) {
                 showToastOnMain("Нет сети или не удалось подключиться к GigaChat")
+                showSourceDialogAfterAiFailure(sourceText)
             } catch (e: GigaChatClient.Error.EmptyResponse) {
                 showToastOnMain("GigaChat вернул пустой ответ")
+                showSourceDialogAfterAiFailure(sourceText)
+            } catch (e: GigaChatClient.Error.InputTooLong) {
+                showToastOnMain(e.message ?: "Слишком длинный текст для AI-очистки")
+                showSourceDialogAfterAiFailure(sourceText)
+            } catch (e: GigaChatClient.Error.RateLimited) {
+                showToastOnMain("Слишком много запросов к GigaChat, попробуйте позже")
+                showSourceDialogAfterAiFailure(sourceText)
             } catch (e: GigaChatClient.Error.Api) {
                 showToastOnMain(e.message ?: "Ошибка GigaChat API")
+                showSourceDialogAfterAiFailure(sourceText)
             } catch (e: Exception) {
                 showToastOnMain("Ошибка AI-очистки: ${e.message}")
+                showSourceDialogAfterAiFailure(sourceText)
             }
+        }
+    }
+
+    private fun showSourceDialogAfterAiFailure(sourceText: String) {
+        scope.launch(Dispatchers.Main) {
+            showRecognitionDialog(sourceText, null, allowAi = true)
         }
     }
 
