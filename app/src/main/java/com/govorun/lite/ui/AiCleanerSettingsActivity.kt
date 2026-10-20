@@ -7,7 +7,6 @@ import android.view.View
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.Toast
-import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import com.google.android.material.appbar.MaterialToolbar
 import com.google.android.material.button.MaterialButton
@@ -18,14 +17,20 @@ import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
 import com.google.android.material.textview.MaterialTextView
 import com.govorun.lite.util.AiCleanerPrefs
+import com.govorun.lite.util.GigaChatClient
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
 
 /** Settings screen for optional online AI cleanup of already-recognized text. */
 class AiCleanerSettingsActivity : AppCompatActivity() {
 
     private lateinit var apiKeyEdit: TextInputEditText
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        enableEdgeToEdge()
         DynamicColors.applyToActivityIfAvailable(this)
         super.onCreate(savedInstanceState)
 
@@ -88,7 +93,6 @@ class AiCleanerSettingsActivity : AppCompatActivity() {
 
         apiKeyEdit = TextInputEditText(this).apply {
             setText(AiCleanerPrefs.getAuthorizationKey(this@AiCleanerSettingsActivity))
-            hint = "Authorization Key"
             inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
             setSingleLine(true)
         }
@@ -110,6 +114,47 @@ class AiCleanerSettingsActivity : AppCompatActivity() {
             }
         }
         content.addView(saveKeyButton)
+        val checkButton = MaterialButton(this).apply {
+            text = "Проверить GigaChat"
+            setOnClickListener {
+                AiCleanerPrefs.setAuthorizationKey(
+                    this@AiCleanerSettingsActivity,
+                    apiKeyEdit.text?.toString().orEmpty()
+                )
+                isEnabled = false
+                scope.launch(Dispatchers.IO) {
+                    val result = try {
+                        GigaChatClient(this@AiCleanerSettingsActivity).checkConnection()
+                        "Проверка успешна: GigaChat доступен."
+                    } catch (e: GigaChatClient.Error.MissingAuthorizationKey) {
+                        "Ошибка: не указан Authorization Key."
+                    } catch (e: GigaChatClient.Error.Unauthorized) {
+                        "Ошибка ключа: Authorization Key недействителен или отозван."
+                    } catch (e: GigaChatClient.Error.Tls) {
+                        "TLS/SSL ошибка подключения. Проверьте сертификаты, VPN и дату/время."
+                    } catch (e: GigaChatClient.Error.Timeout) {
+                        "Ошибка сети: таймаут подключения."
+                    } catch (e: GigaChatClient.Error.Network) {
+                        "Ошибка сети: не удалось подключиться к GigaChat."
+                    } catch (e: GigaChatClient.Error.RateLimited) {
+                        "Ошибка API: слишком много запросов (HTTP 429)."
+                    } catch (e: GigaChatClient.Error.ServerUnavailable) {
+                        "Ошибка API: сервер временно недоступен (HTTP 5xx)."
+                    } catch (e: GigaChatClient.Error.EmptyResponse) {
+                        "Ошибка API: получен пустой ответ."
+                    } catch (e: GigaChatClient.Error.Api) {
+                        "Ошибка API: ${e.message}"
+                    } catch (e: Exception) {
+                        "Ошибка: ${e.message ?: "неизвестная ошибка"}"
+                    }
+                    scope.launch(Dispatchers.Main) {
+                        isEnabled = true
+                        Toast.makeText(this@AiCleanerSettingsActivity, result, Toast.LENGTH_LONG).show()
+                    }
+                }
+            }
+        }
+        content.addView(checkButton)
 
         content.addView(spacer(16))
         content.addView(sectionTitle("Модель"))
@@ -167,6 +212,11 @@ class AiCleanerSettingsActivity : AppCompatActivity() {
         ))
 
         setContentView(root)
+    }
+
+    override fun onDestroy() {
+        scope.cancel()
+        super.onDestroy()
     }
 
     private fun sectionTitle(text: String): MaterialTextView =
